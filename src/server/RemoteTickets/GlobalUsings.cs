@@ -1,0 +1,13 @@
+global using System;
+global using System.IdentityModel.Tokens.Jwt;
+global using System.Security.Claims;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using RemoteTickets.Application.Common.Identity;
+global using RemoteTickets.Application.Identity.Requests;
+global using RemoteTickets.Composition;
+global using RemoteTickets.Components;
+global using Mediator.Net;
+global using Microsoft.AspNetCore.Authorization;
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.AspNetCore.Mvc;

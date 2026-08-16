@@ -1,0 +1,28 @@
+name: 🛠️ Test
+description: An test implementation and execution for a task.
+title: "🛠️ [TEST]: "
+labels: [enhancement, test]
+body:
+  - type: markdown
+    attributes:
+      value: "## TEST PLAN"
+
+  - type: textarea
+    attributes:
+      description: A clear description of the task that needs tests implementation and/or execution.
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: "## Tests"
+
+  - type: textarea
+    attributes:
+      label: "Tests:"
+      description: "Add tests implementations for complete this run (one per-line)."
+      value: |
+        - [ ] Test condition 1 with behavior A
+        - [ ] Test condition 2 with behavior B
+    validations:
+      required: true

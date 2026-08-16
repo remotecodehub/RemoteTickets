@@ -1,0 +1,143 @@
+name: CI - CT - CD
+
+on:
+  push:
+    branches: [main]
+    tags: [v*]
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.*
+      - name: Restore
+        run: dotnet restore RemoteTickets.slnx
+      - name: Build
+        run: dotnet build RemoteTickets.slnx --configuration Release --no-restore
+
+  tests:
+    name: Continuous Testing
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.*
+      - name: Restore
+        run: dotnet restore ${{ github.workspace }}/tests/RemoteTickets.UnitTests/RemoteTickets.UnitTests.csproj
+      - name: Install ReportGenerator
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
+
+      - name: Test with Coverlet
+        id: test
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/test-results | Out-Null
+          $outputFile = Join-Path $env:GITHUB_WORKSPACE 'artifacts/test-output.txt'
+          & dotnet test $env:GITHUB_WORKSPACE/tests/RemoteTickets.UnitTests/RemoteTickets.UnitTests.csproj `
+            --configuration Release `
+            --no-restore `
+            --collect:"XPlat Code Coverage" `
+            --results-directory $env:GITHUB_WORKSPACE/artifacts/test-results `
+            --logger "trx;LogFileName=test-results.trx" 2>&1 | Tee-Object -FilePath $outputFile
+          $exitCode = $LASTEXITCODE
+          "dotnet test exit code: $exitCode" | Add-Content -Path $outputFile
+          "TEST_EXIT_CODE=$exitCode" | Out-File -FilePath artifacts/test-exit-code.txt -Encoding utf8
+
+      - name: Publish Test Summary
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: 'Continuous Test Results'
+          path: './artifacts/test-results/*.trx'
+          reporter: 'dotnet-trx'
+
+      - name: Generate coverage report
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/coverage | Out-Null
+          $coverageFiles = @(Get-ChildItem -Path artifacts/test-results -Filter coverage.cobertura.xml -Recurse -File -ErrorAction SilentlyContinue)
+          if ($coverageFiles.Count -gt 0) {
+            reportgenerator -reports:"artifacts/test-results/**/coverage.cobertura.xml" -targetdir:"artifacts/coverage" -reporttypes:"MarkdownSummary;Cobertura"
+          } else {
+            "# Coverage report unavailable`n`nCoverlet did not produce a coverage XML file." | Out-File artifacts/coverage/Summary.md -Encoding utf8
+          }
+
+      - name: Enforce 80 percent line and branch coverage
+        if: always()
+        shell: pwsh
+        run: |
+          $coverageFiles = @(Get-ChildItem -Path "$env:GITHUB_WORKSPACE/artifacts/test-results" -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            Get-ChildItem -Path $_.FullName -Filter coverage.cobertura.xml -File -ErrorAction SilentlyContinue
+          })
+
+          if ($coverageFiles.Count -eq 0) {
+            "## Coverage gate`n`nNo Coverlet XML was found under the test-results GUID subdirectories." | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            return
+          }
+
+          $coverageFile = $coverageFiles | Select-Object -First 1
+          [xml]$coverage = Get-Content $coverageFile.FullName
+          $lineRate = [double]$coverage.coverage.'line-rate' * 100
+          $branchRate = [double]$coverage.coverage.'branch-rate' * 100
+
+          @"           
+          ## Coverage gate
+          | Metric | Result | Minimum | Status |
+          | --- | ---: | ---: | --- |
+          "@ | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+
+          if ($lineRate -ge 80) {
+            "| Line coverage | $([math]::Round($lineRate, 2))% | 80% | ✅ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            "| Line coverage | $([math]::Round($lineRate, 2))% | 80% | ❌ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+          if ($branchRate -ge 80) {
+            "| Branch coverage | $([math]::Round($branchRate, 2))% | 80% | ✅ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            "| Branch coverage | $([math]::Round($branchRate, 2))% | 80% | ❌ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          
+
+
+      - name: Append test execution report
+        if: always()
+        shell: pwsh
+        run: if (Test-Path artifacts/coverage/Summary.md) { Get-Content artifacts/coverage/Summary.md | Add-Content $env:GITHUB_STEP_SUMMARY } else { Add-Content $env:GITHUB_STEP_SUMMARY 'Coverage report was not generated.' }
+
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: Continuous-Testing-Reports
+          path: artifacts/
+          if-no-files-found: warn
+
+      - name: Fail if tests failed
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path artifacts/test-exit-code.txt) {
+            $exitCode = [int](Get-Content artifacts/test-exit-code.txt -Raw).Replace('TEST_EXIT_CODE=', '').Trim()
+            if ($exitCode -ne 0) { Write-Error "dotnet test failed with exit code $exitCode." }
+          }

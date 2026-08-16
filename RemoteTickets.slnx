@@ -1,0 +1,15 @@
+<Solution>
+
+  <Folder Name="/src/"/>
+  <Folder Name="/src/server/">
+    <Project Path="src/server/RemoteTickets.Application/RemoteTickets.Application.csproj" />
+    <Project Path="src/server/RemoteTickets.Composition/RemoteTickets.Composition.csproj" />
+    <Project Path="src/server/RemoteTickets.Domain/RemoteTickets.Domain.csproj" />
+    <Project Path="src/server/RemoteTickets.Infrastructure/RemoteTickets.Infrastructure.csproj" />
+    <Project Path="src/server/RemoteTickets/RemoteTickets.csproj" />
+  </Folder>
+  <Folder Name="/tests/"/>
+  <Folder Name="/tests/server/">
+    <Project Path="tests/server/RemoteTickets.UnitTests/RemoteTickets.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,13 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Security.Claims;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using FluentValidation;
+global using FluentValidation.Results;
+global using Mediator.Net.Context;
+global using Mediator.Net.Contracts;
+global using Mediator.Net.Pipeline;
+global using RemoteTickets.Application.Common.Identity;
+global using RemoteTickets.Application.Identity.Requests;
