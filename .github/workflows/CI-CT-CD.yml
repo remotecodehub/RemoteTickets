@@ -40,7 +40,7 @@ jobs:
         with:
           dotnet-version: 10.0.*
       - name: Restore
-        run: dotnet restore ${{ github.workspace }}/tests/RemoteTickets.UnitTests/RemoteTickets.UnitTests.csproj
+        run: dotnet restore ${{ github.workspace }}/tests/server/RemoteTickets.UnitTests/RemoteTickets.UnitTests.csproj
       - name: Install ReportGenerator
         run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
 
@@ -51,7 +51,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifacts/test-results | Out-Null
           $outputFile = Join-Path $env:GITHUB_WORKSPACE 'artifacts/test-output.txt'
-          & dotnet test $env:GITHUB_WORKSPACE/tests/RemoteTickets.UnitTests/RemoteTickets.UnitTests.csproj `
+          & dotnet test $env:GITHUB_WORKSPACE/tests/server/RemoteTickets.UnitTests/RemoteTickets.UnitTests.csproj `
             --configuration Release `
             --no-restore `
             --collect:"XPlat Code Coverage" `
