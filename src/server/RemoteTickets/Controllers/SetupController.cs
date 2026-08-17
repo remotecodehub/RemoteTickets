@@ -3,10 +3,9 @@ namespace RemoteTickets.Controllers;
 /// <summary>Exposes anonymous endpoints used during first-time application setup.</summary>
 /// <param name="mediator">The mediator used to dispatch setup requests.</param>
 /// <param name="configurationStore">The store used to persist the master database connection.</param>
-/// <param name="dbContext">The central database context used to initialize the master schema.</param>
 [ApiController]
 [Route("api/setup")]
-public sealed class SetupController(IMediator mediator, ISetupConfigurationStore configurationStore, RemoteTicketsDbContext dbContext) : ControllerBase
+public sealed class SetupController(IMediator mediator, ISetupConfigurationStore configurationStore) : ControllerBase
 {
     /// <summary>Gets the current first-time setup status.</summary>
     [HttpGet("status")]
@@ -20,6 +19,8 @@ public sealed class SetupController(IMediator mediator, ISetupConfigurationStore
     {
         if (string.IsNullOrWhiteSpace(request.ConnectionString)) return BadRequest(new { error = "A master database connection string is required." });
         await configurationStore.SetMasterConnectionStringAsync(request.ConnectionString, cancellationToken);
+        var options = new DbContextOptionsBuilder<RemoteTicketsDbContext>().UseSqlServer(request.ConnectionString).Options;
+        await using var dbContext = new RemoteTicketsDbContext(options);
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
         return Ok();
     }
