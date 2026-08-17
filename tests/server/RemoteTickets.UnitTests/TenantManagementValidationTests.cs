@@ -8,11 +8,8 @@ public sealed class TenantManagementValidationTests
     {
         var service = new TenantManagementService(null!, null!, Microsoft.Extensions.Logging.Abstractions.NullLogger<TenantManagementService>.Instance);
 
-        await FluentActions.Awaiting(() => service.CreateAsync(new CreateTenantRequest(string.Empty, "database", "Server=.", "admin@example.com", "Password1!"), TestContext.Current.CancellationToken))
-            .Should().ThrowAsync<ArgumentException>();
-        await FluentActions.Awaiting(() => service.CreateAsync(new CreateTenantRequest("tenant", string.Empty, "Server=.", "admin@example.com", "Password1!"), TestContext.Current.CancellationToken))
-            .Should().ThrowAsync<ArgumentException>();
-        await FluentActions.Awaiting(() => service.CreateAsync(new CreateTenantRequest("tenant", "database", string.Empty, "admin@example.com", "Password1!"), TestContext.Current.CancellationToken))
-            .Should().ThrowAsync<ArgumentException>();
+        await FluentActions.Awaiting(() => service.CreateAsync(new CreateTenantRequest(string.Empty, "tenant", "database", "Server=.", "admin@example.com", "Password1!"), TestContext.Current.CancellationToken)).Should().ThrowAsync<ArgumentException>();
+        await FluentActions.Awaiting(() => service.CreateAsync(new CreateTenantRequest("id", "tenant", string.Empty, "Server=.", "admin@example.com", "Password1!"), TestContext.Current.CancellationToken)).Should().ThrowAsync<ArgumentException>();
+        await FluentActions.Awaiting(() => service.CreateAsync(new CreateTenantRequest("id", "tenant", "database", string.Empty, "admin@example.com", "Password1!"), TestContext.Current.CancellationToken)).Should().ThrowAsync<ArgumentException>();
     }
 }
