@@ -1,0 +1,46 @@
+@page "/{tenantId}/setup"
+@using System.Net.Http.Json
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Tenant setup</PageTitle>
+
+<h1>Tenant setup</h1>
+<p>Tenant <strong>@tenantId</strong> is not ready for normal operations. Run the database validation and complete setup.</p>
+
+<button @onclick="CompleteAsync" disabled="Busy">Validate and complete setup</button>
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <p>@Message</p>
+}
+
+@code {
+    [Parameter] public string tenantId { get; set; } = string.Empty;
+    private bool Busy;
+    private string Message = string.Empty;
+
+    private async Task CompleteAsync()
+    {
+        Busy = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            client.BaseAddress = new Uri(Navigation.BaseUri);
+            var response = await client.PostAsync($"api/v1/{Uri.EscapeDataString(tenantId)}/setup/complete", null);
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo($"/{tenantId}", true);
+                return;
+            }
+            Message = await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception exception)
+        {
+            Message = exception.Message;
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+}
