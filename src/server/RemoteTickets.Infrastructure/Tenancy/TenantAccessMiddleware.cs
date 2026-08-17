@@ -5,7 +5,7 @@ using RemoteTickets.Application.Common.Tenancy;
 namespace RemoteTickets.Infrastructure.Tenancy;
 
 /// <summary>Enforces tenant route isolation and mandatory setup state for HTTP requests.</summary>
-public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManagementService tenants, IIdentityService identityService)
+public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManagementService tenants, IIdentityService identityService, RemoteTicketsDbContext masterDb)
 {
     /// <summary>Processes the current request and enforces tenant isolation when a tenant route is present.</summary>
     /// <param name="context">The current HTTP context.</param>
@@ -15,8 +15,9 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
         if (IsInfrastructurePath(context.Request.Path)) { await next(context); return; }
         var endpoint = context.GetEndpoint();
         var anonymous = endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
-        var systemStatus = await identityService.GetSetupStatusAsync(context.RequestAborted);
-        if (systemStatus.IsSetupRequired)
+        var setupState = await masterDb.SystemSetup.AsNoTracking().SingleOrDefaultAsync(x => x.Id == 1, context.RequestAborted);
+        var systemSetupRequired = setupState is null || !setupState.IsComplete;
+        if (systemSetupRequired)
         {
             if (IsSystemSetupEndpoint(context)) { await next(context); return; }
             await RejectOrRedirectAsync(context, "/setup", StatusCodes.Status503ServiceUnavailable);
