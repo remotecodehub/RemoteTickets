@@ -8,7 +8,6 @@ public sealed class ApplicationFoundationTests
     {
         var request = new CreateTenantRequest("id", "tenant", "database", "Server=.;Database=database", "admin@example.com", "Password1!");
         request.ToCommand().Name.Should().Be("tenant");
-
         AssertArgument(() => (request with { Name = string.Empty }).ToCommand());
         AssertArgument(() => (request with { Name = "   " }).ToCommand());
         AssertArgument(() => (request with { DatabaseName = string.Empty }).ToCommand());
@@ -24,9 +23,8 @@ public sealed class ApplicationFoundationTests
     [Fact]
     public void CreateTenantCommand_should_convert_valid_command_and_validate_required_fields()
     {
-        var command = new CreateTenantCommand("id", "tenant", "database", "Server=.;Database=database", "admin@example.com", "Password1!");
+        var command = new CreateTenantCommand("tenant", "database", "Server=.;Database=database", "admin@example.com", "Password1!");
         command.ToRequest().Name.Should().Be("tenant");
-
         AssertArgument(() => (command with { Name = string.Empty }).ToRequest());
         AssertArgument(() => (command with { Name = "   " }).ToRequest());
         AssertArgument(() => (command with { DatabaseName = string.Empty }).ToRequest());
@@ -68,7 +66,7 @@ public sealed class ApplicationFoundationTests
         var cancellationToken = TestContext.Current.CancellationToken;
         (await handlers.Handle(new ReceiveContext<GetTenantSetupStatusQuery>(new("tenant")), cancellationToken)).IsSetupComplete.Should().BeTrue();
         (await handlers.Handle(new ReceiveContext<CompleteTenantSetupCommand>(new("tenant")), cancellationToken)).IsSetupComplete.Should().BeTrue();
-        (await handlers.Handle(new ReceiveContext<CreateTenantCommand>(new("id", "tenant", "db", "Server=.;Database=db", "admin@example.com", "Password1!")), cancellationToken)).Id.Should().Be("tenant");
+        (await handlers.Handle(new ReceiveContext<CreateTenantCommand>(new("tenant", "db", "Server=.;Database=db", "admin@example.com", "Password1!")), cancellationToken)).Name.Should().Be("Tenant");
         (await handlers.Handle(new ReceiveContext<GetTenantQuery>(new("tenant")), cancellationToken)).Should().NotBeNull();
     }
 
@@ -88,7 +86,7 @@ public sealed class ApplicationFoundationTests
     private sealed class FakeTenantService : ITenantManagementService
     {
         public Task<TenantResponse?> GetAsync(string tenantId, CancellationToken cancellationToken) => Task.FromResult<TenantResponse?>(new TenantResponse(tenantId, "Tenant", "db", true, true));
-        public Task<TenantResponse> CreateAsync(CreateTenantRequest request, CancellationToken cancellationToken) => Task.FromResult(new TenantResponse(request.Id, request.Name, request.DatabaseName, true, false));
+        public Task<TenantResponse> CreateAsync(CreateTenantRequest request, CancellationToken cancellationToken) => Task.FromResult(new TenantResponse(request.Id ?? "tenant", request.Name, request.DatabaseName, true, false));
         public Task<TenantSetupStatusResponse> GetSetupStatusAsync(string tenantId, CancellationToken cancellationToken) => Task.FromResult(new TenantSetupStatusResponse(false, true));
         public Task<TenantSetupStatusResponse> CompleteSetupAsync(string tenantId, CancellationToken cancellationToken) => Task.FromResult(new TenantSetupStatusResponse(false, true));
     }
