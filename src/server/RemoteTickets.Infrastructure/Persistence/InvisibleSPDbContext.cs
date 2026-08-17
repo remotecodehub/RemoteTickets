@@ -1,17 +1,29 @@
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using RemoteTickets.Infrastructure.Tenancy.Models;
 
 namespace RemoteTickets.Infrastructure.Persistence;
 
-/// <summary>
-/// Represents the database context for the RemoteTickets application.
-/// </summary>
-public sealed class RemoteTicketsDbContext(
-    DbContextOptions<RemoteTicketsDbContext> options) : IdentityDbContext<User, Role, string>(options)
+/// <summary>Represents the central database context for RemoteTickets identity and tenant catalog data.</summary>
+public sealed class RemoteTicketsDbContext(DbContextOptions<RemoteTicketsDbContext> options) : IdentityDbContext<User, Role, string>(options)
 {
+    /// <summary>Gets the registered tenants.</summary>
+    public DbSet<Tenant> Tenants => Set<Tenant>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<Tenant>(entity =>
+        {
+            entity.ToTable("Tenants");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(128);
+            entity.Property(x => x.Name).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.DatabaseName).HasMaxLength(128).IsRequired();
+            entity.Property(x => x.ConnectionString).IsRequired();
+            entity.HasIndex(x => x.DatabaseName).IsUnique();
+        });
 
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
@@ -25,6 +37,7 @@ public sealed class RemoteTicketsDbContext(
             var filter = Expression.Lambda(Expression.Not(property), parameter);
             builder.Entity(entityType.ClrType).HasQueryFilter(filter);
         }
+
         builder.ApplyConfigurationsFromAssembly(typeof(RemoteTicketsDbContext).Assembly);
     }
 
@@ -43,9 +56,7 @@ public sealed class RemoteTicketsDbContext(
     }
 
     /// <inheritdoc />
-    public override Task<int> SaveChangesAsync(
-        bool acceptAllChangesOnSuccess,
-        CancellationToken cancellationToken = default)
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         ApplySoftDelete();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
