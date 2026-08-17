@@ -1,35 +1,51 @@
-@page "/{tenantId}/setup"
+@page "/{TenantId}/setup"
 @using System.Net.Http.Json
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
 
 <PageTitle>Tenant setup</PageTitle>
 
-<h1>Tenant setup</h1>
-<p>Tenant <strong>@tenantId</strong> is not ready for normal operations. Run the database validation and complete setup.</p>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+    <MudPaper Elevation="2" Class="pa-6">
+        <MudText Typo="Typo.h4" GutterBottom="true">Tenant setup</MudText>
+        <MudText Typo="Typo.body1" Class="mb-6">
+            Tenant <strong>@TenantId</strong> is not ready for normal operations. Run the database validation and complete setup.
+        </MudText>
 
-<button @onclick="CompleteAsync" disabled="Busy">Validate and complete setup</button>
-@if (!string.IsNullOrWhiteSpace(Message))
-{
-    <p>@Message</p>
-}
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="Busy" StartIcon="@Icons.Material.Filled.Verified" OnClick="CompleteAsync">
+            @(Busy ? "Validating..." : "Validate and complete setup")
+        </MudButton>
+
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <MudAlert Severity="@(SetupSucceeded ? Severity.Success : Severity.Error)" Variant="Variant.Outlined" Class="mt-4">
+                @Message
+            </MudAlert>
+        }
+    </MudPaper>
+</MudContainer>
 
 @code {
-    [Parameter] public string tenantId { get; set; } = string.Empty;
+    [Parameter] public string TenantId { get; set; } = string.Empty;
     private bool Busy;
+    private bool SetupSucceeded;
     private string Message = string.Empty;
 
     private async Task CompleteAsync()
     {
         Busy = true;
+        SetupSucceeded = false;
+        Message = string.Empty;
         try
         {
             var client = HttpClientFactory.CreateClient();
             client.BaseAddress = new Uri(Navigation.BaseUri);
-            var response = await client.PostAsync($"api/v1/{Uri.EscapeDataString(tenantId)}/setup/complete", null);
+            var response = await client.PostAsync($"api/v1/{Uri.EscapeDataString(TenantId)}/setup/complete", null);
             if (response.IsSuccessStatusCode)
             {
-                Navigation.NavigateTo($"/{tenantId}", true);
+                SetupSucceeded = true;
+                Message = "Tenant setup completed.";
+                Navigation.NavigateTo($"/{TenantId}", true);
                 return;
             }
             Message = await response.Content.ReadAsStringAsync();
