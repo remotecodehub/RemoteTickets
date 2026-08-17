@@ -5,29 +5,34 @@
 
 <PageTitle>System setup</PageTitle>
 
-<h1>System setup</h1>
-<p>Configure the master SQL Server database and create the first system administrator before using the application.</p>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+    <MudPaper Elevation="2" Class="pa-6">
+        <MudText Typo="Typo.h4" GutterBottom="true">System setup</MudText>
+        <MudText Typo="Typo.body1" Class="mb-6">
+            Configure the master SQL Server database and create the first system administrator before using the application.
+        </MudText>
 
-<div>
-    <label>Master connection string</label>
-    <input @bind="ConnectionString" style="width:100%" />
-</div>
-<div>
-    <label>Administrator email</label>
-    <input @bind="Email" />
-</div>
-<div>
-    <label>Administrator password</label>
-    <input type="password" @bind="Password" />
-</div>
-<button @onclick="InitializeAsync" disabled="Busy">Initialize</button>
-@if (!string.IsNullOrWhiteSpace(Message))
-{
-    <p>@Message</p>
-}
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="ConnectionString" Label="Master connection string" Variant="Variant.Outlined" Required="true" InputType="InputType.Text" />
+            <MudTextField @bind-Value="Email" Label="Administrator email" Variant="Variant.Outlined" Required="true" InputType="InputType.Email" />
+            <MudTextField @bind-Value="Password" Label="Administrator password" Variant="Variant.Outlined" Required="true" InputType="InputType.Password" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="Busy" StartIcon="@Icons.Material.Filled.PlayArrow" OnClick="InitializeAsync">
+                @(Busy ? "Initializing..." : "Initialize")
+            </MudButton>
+        </MudStack>
+
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <MudAlert Severity="@(SetupSucceeded ? Severity.Success : Severity.Error)" Variant="Variant.Outlined" Class="mt-4">
+                @Message
+            </MudAlert>
+        }
+    </MudPaper>
+</MudContainer>
 
 @code {
     private bool Busy;
+    private bool SetupSucceeded;
     private string ConnectionString = string.Empty;
     private string Email = string.Empty;
     private string Password = string.Empty;
@@ -36,20 +41,22 @@
     private async Task InitializeAsync()
     {
         Busy = true;
+        SetupSucceeded = false;
         Message = string.Empty;
         try
         {
             var client = HttpClientFactory.CreateClient();
             client.BaseAddress = new Uri(Navigation.BaseUri);
-            var configure = await client.PostAsJsonAsync("api/setup/master-database", new { ConnectionString });
+            var configure = await client.PostAsJsonAsync("api/v1/setup/database", new { ConnectionString });
             if (!configure.IsSuccessStatusCode)
             {
                 Message = "The master database configuration could not be stored.";
                 return;
             }
 
-            var initialize = await client.PostAsJsonAsync("api/setup/initialize", new { Email, Password });
-            Message = initialize.IsSuccessStatusCode ? "Setup completed. You can now sign in." : await initialize.Content.ReadAsStringAsync();
+            var initialize = await client.PostAsJsonAsync("api/v1/setup/initialize", new { Email, Password });
+            SetupSucceeded = initialize.IsSuccessStatusCode;
+            Message = SetupSucceeded ? "Setup completed. You can now sign in." : await initialize.Content.ReadAsStringAsync();
         }
         catch (Exception exception)
         {
