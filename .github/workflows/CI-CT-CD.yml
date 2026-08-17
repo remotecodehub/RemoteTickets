@@ -1,4 +1,4 @@
-name: CI - CT - CD
+name: Continuous Integration - Testing - Deploy
 
 on:
   push:
@@ -105,21 +105,23 @@ jobs:
           | --- | ---: | ---: | --- |
           "@ | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
-
           if ($lineRate -ge 80) {
             "| Line coverage | $([math]::Round($lineRate, 2))% | 80% | ✅ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "LINE_EXIT_CODE=0" | Out-File -FilePath artifacts/line-rate-code.txt -Encoding utf8
           } else {
             "| Line coverage | $([math]::Round($lineRate, 2))% | 80% | ❌ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "LINE_EXIT_CODE=1" | Out-File -FilePath artifacts/line-rate-code.txt -Encoding utf8
           }
 
           if ($branchRate -ge 80) {
             "| Branch coverage | $([math]::Round($branchRate, 2))% | 80% | ✅ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "BRANCH_EXIT_CODE=0" | Out-File -FilePath artifacts/branch-rate-code.txt -Encoding utf8
+          
           } else {
             "| Branch coverage | $([math]::Round($branchRate, 2))% | 80% | ❌ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "BRANCH_EXIT_CODE=1" | Out-File -FilePath artifacts/branch-rate-code.txt -Encoding utf8
           }
           
-
-
       - name: Append test execution report
         if: always()
         shell: pwsh
@@ -140,4 +142,27 @@ jobs:
           if (Test-Path artifacts/test-exit-code.txt) {
             $exitCode = [int](Get-Content artifacts/test-exit-code.txt -Raw).Replace('TEST_EXIT_CODE=', '').Trim()
             if ($exitCode -ne 0) { Write-Error "dotnet test failed with exit code $exitCode." }
+          }
+
+      - name: Fail if line rate is above 80%
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path artifacts/line-rate-code.txt) {
+            $exitCode = [double](Get-Content artifacts/line-rate-code.txt -Raw).Replace('LINE_EXIT_CODE=', '').Trim()
+            if ($exitCode -le 80) 
+            {
+              Write-Error "Line coverage is under rate. Current rate: $" 
+            }
+          }
+
+      - name: Fail if branch rate is above 80%
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path artifacts/branch-rate-code.txt) {
+            $exitCode = [double](Get-Content artifacts/branch-rate-code.txt -Raw).Replace('BRANCH_EXIT_CODE=', '').Trim()
+            if ($exitCode -le 80) {
+              Write-Error "Branch coverage is under rate. Current rate: $" 
+            }
           }
