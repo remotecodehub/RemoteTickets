@@ -45,10 +45,7 @@ public sealed class RemoteTicketsDbContext(DbContextOptions<RemoteTicketsDbConte
 
     /// <inheritdoc />
     public override int SaveChanges()
-    {
-        PreparePersistenceChanges();
-        return base.SaveChanges();
-    }
+        => SaveChanges(true);
 
     /// <inheritdoc />
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
@@ -59,10 +56,7 @@ public sealed class RemoteTicketsDbContext(DbContextOptions<RemoteTicketsDbConte
 
     /// <inheritdoc />
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        PreparePersistenceChanges();
-        return base.SaveChangesAsync(cancellationToken);
-    }
+        => SaveChangesAsync(true, cancellationToken);
 
     private void PreparePersistenceChanges()
     {
