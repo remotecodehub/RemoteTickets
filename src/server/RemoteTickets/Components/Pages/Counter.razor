@@ -1,15 +1,22 @@
-@page "/{tenantId}/counter"
+@page "/{TenantId}/counter"
 @rendermode InteractiveServer
 
 <PageTitle>Counter</PageTitle>
 
-<h1>Counter</h1>
-<p>Tenant: @tenantId</p>
-<p role="status">Current count: @currentCount</p>
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+    <MudPaper Elevation="2" Class="pa-6">
+        <MudText Typo="Typo.h4" GutterBottom="true">Counter</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Tenant: @TenantId</MudText>
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.h5" Class="mb-4">Current count: @currentCount</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="IncrementCount">
+            Increment
+        </MudButton>
+    </MudPaper>
+</MudContainer>
 
 @code {
-    [Parameter] public string tenantId { get; set; } = string.Empty;
+    [Parameter] public string TenantId { get; set; } = string.Empty;
     private int currentCount;
     private void IncrementCount() => currentCount++;
 }
