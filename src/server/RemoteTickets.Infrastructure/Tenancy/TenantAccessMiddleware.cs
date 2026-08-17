@@ -1,7 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using RemoteTickets.Application.Common.Tenancy;
-
 namespace RemoteTickets.Infrastructure.Tenancy;
 
 /// <summary>Enforces tenant route isolation and mandatory setup state for HTTP requests.</summary>

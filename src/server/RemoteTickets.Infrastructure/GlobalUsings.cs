@@ -18,6 +18,8 @@ global using RemoteTickets.Infrastructure.Persistence;
 global using RemoteTickets.Infrastructure.Setup;
 global using RemoteTickets.Infrastructure.Tenancy.Configurations;
 global using RemoteTickets.Infrastructure.Tenancy.Models;
+global using Microsoft.AspNetCore.Authorization;
+global using Microsoft.AspNetCore.Http;
 global using Microsoft.AspNetCore.Identity;
 global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 global using Microsoft.Data.SqlClient;
