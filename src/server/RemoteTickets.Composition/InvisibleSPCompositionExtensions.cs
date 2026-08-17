@@ -12,16 +12,16 @@ public static class RemoteTicketsCompositionExtensions
         {
             var services = builder.Services;
             var configuration = builder.Configuration;
-
             services.AddRazorComponents().AddInteractiveServerComponents();
             services.AddControllers();
+            services.AddHttpClient();
             services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
             services.AddSingleton<ISetupConfigurationStore, SetupConfigurationStore>();
 
-            services.AddDbContext<RemoteTicketsDbContext>(options =>
+            services.AddDbContext<RemoteTicketsDbContext>((sp, options) =>
             {
-                var setup = services.BuildServiceProvider().GetService<ISetupConfigurationStore>();
-                var connectionString = setup?.GetMasterConnectionString() ?? configuration.GetConnectionString("Identity") ?? configuration.GetConnectionString("Master");
+                var setup = sp.GetRequiredService<ISetupConfigurationStore>();
+                var connectionString = setup.GetMasterConnectionString() ?? configuration.GetConnectionString("Identity") ?? configuration.GetConnectionString("Master");
                 if (string.IsNullOrWhiteSpace(connectionString)) throw new InvalidOperationException("A master database connection string is required.");
                 options.UseSqlServer(connectionString);
             });
