@@ -10,11 +10,8 @@ public sealed record RegisterCommand(string Email, string Password) : IRequest;
 /// <param name="Password">The user's password.</param>
 /// <param name="TwoFactorCode">The authenticator code, when required.</param>
 /// <param name="TwoFactorRecoveryCode">The recovery code, when used instead of an authenticator code.</param>
-public sealed record LoginCommand(
-    string Email,
-    string Password,
-    string? TwoFactorCode = null,
-    string? TwoFactorRecoveryCode = null) : IRequest;
+/// <param name="TenantId">The tenant route identifier. When supplied, the identity must belong to this tenant or be a system administrator.</param>
+public sealed record LoginCommand(string Email, string Password, string? TwoFactorCode = null, string? TwoFactorRecoveryCode = null, string? TenantId = null) : IRequest;
 
 /// <summary>Requests exchange of a refresh token.</summary>
 /// <param name="RefreshToken">The refresh token to exchange.</param>
@@ -53,26 +50,16 @@ public sealed record GetIdentityInfoQuery(string UserId) : IRequest;
 /// <param name="NewEmail">The replacement email address, or <see langword="null"/> to keep the current address.</param>
 /// <param name="NewPassword">The replacement password, or <see langword="null"/> to keep the current password.</param>
 /// <param name="OldPassword">The current password used to authorize the change.</param>
-public sealed record UpdateIdentityInfoCommand(
-    string UserId,
-    string? NewEmail,
-    string? NewPassword,
-    string OldPassword) : IRequest;
+public sealed record UpdateIdentityInfoCommand(string UserId, string? NewEmail, string? NewPassword, string OldPassword) : IRequest;
 
 /// <summary>Requests a change to authenticator-based two-factor authentication.</summary>
 /// <param name="UserId">The user identifier.</param>
 /// <param name="Enable">Whether to enable or disable two-factor authentication.</param>
 /// <param name="TwoFactorCode">The authenticator code used when enabling two-factor authentication.</param>
 /// <param name="ResetRecoveryCodes">Whether recovery codes should be regenerated.</param>
-/// <param name="ResetSharedKey">Whether the authenticator shared key should be regenerated.</param>
+/// <param name="ResetSharedKey">Whether the shared authenticator key should be regenerated.</param>
 /// <param name="ForgetMachine">Whether the remembered machine state should be cleared.</param>
-public sealed record ConfigureTwoFactorCommand(
-    string UserId,
-    bool? Enable,
-    string? TwoFactorCode,
-    bool ResetRecoveryCodes,
-    bool ResetSharedKey,
-    bool ForgetMachine) : IRequest;
+public sealed record ConfigureTwoFactorCommand(string UserId, bool? Enable, string? TwoFactorCode, bool ResetRecoveryCodes, bool ResetSharedKey, bool ForgetMachine) : IRequest;
 
 /// <summary>Requests the current first-time setup status.</summary>
 public sealed record GetSetupStatusQuery : IRequest;
