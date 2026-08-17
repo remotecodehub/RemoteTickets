@@ -49,4 +49,27 @@ public sealed class TenantIdentityTests
         refreshed.Should().NotBeNull();
         fixture.TokenService.ValidateToken(refreshed!.AccessToken)!.FindFirst(TenantClaimTypes.TenantId)!.Value.Should().Be("tenant-a");
     }
+
+    /// <summary>Verifies that a non-tenant user cannot authenticate through a tenant route and that tenant administrator validation rejects missing tenants.</summary>
+    [Fact]
+    public async Task Non_tenant_non_sysadmin_and_missing_tenant_admin_should_be_rejected()
+    {
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
+        User user = new("operator@example.com") { Email = "operator@example.com", EmailConfirmed = true };
+        (await fixture.UserManager.CreateAsync(user, "Password1!", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+
+        (await fixture.Service.LoginAsync("tenant-a", "operator@example.com", "Password1!", null, null, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await fixture.Service.CreateTenantAdminAsync(string.Empty, "admin@example.com", "Password1!", TestContext.Current.CancellationToken)).Succeeded.Should().BeFalse();
+    }
+
+    /// <summary>Verifies that duplicate tenant administrator emails are rejected after the role is provisioned.</summary>
+    [Fact]
+    public async Task Duplicate_tenant_admin_email_should_be_rejected()
+    {
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
+        (await fixture.Service.CreateTenantAdminAsync("tenant-a", "admin@example.com", "Password1!", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        IdentityResultResponse duplicate = await fixture.Service.CreateTenantAdminAsync("tenant-b", "admin@example.com", "Password1!", TestContext.Current.CancellationToken);
+
+        duplicate.Succeeded.Should().BeFalse();
+    }
 }
