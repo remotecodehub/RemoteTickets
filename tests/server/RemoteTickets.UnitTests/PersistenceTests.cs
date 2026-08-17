@@ -1,6 +1,6 @@
 namespace RemoteTickets.UnitTests;
 
-/// <summary>Verifies Entity Framework Core persistence behavior for soft-deletable identity entities.</summary>
+/// <summary>Verifies Entity Framework Core persistence behavior for soft-deletable and auditable identity entities.</summary>
 public sealed class PersistenceTests
 {
     /// <summary>Verifies that soft-deleted users are hidden by the configured query filter.</summary>
@@ -39,6 +39,61 @@ public sealed class PersistenceTests
         user.DeletedAt.Should().NotBeNull();
     }
 
+    /// <summary>Verifies that an added and subsequently modified user produce audit history containing both states.</summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
+    [Fact]
+    public async Task Auditable_entities_should_record_creation_and_update_states()
+    {
+        await using ContextFixture fixture = await CreateContextAsync();
+        var user = new User("audit@example.com") { Email = "audit@example.com", EmailConfirmed = true };
+
+        fixture.Context.Users.Add(user);
+        await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        user.DisplayName = "Updated";
+        await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        List<EntityAuditRecord> history = await fixture.Context.EntityAuditHistory
+            .Where(x => x.EntityId == user.Id)
+            .OrderBy(x => x.UpdatedAt)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        history.Should().HaveCount(2);
+        history[0].Operation.Should().Be("Created");
+        history[0].PreviousEntityState.Should().Be("{}");
+        history[0].CurrentEntityState.Should().Contain("audit@example.com");
+        history[1].Operation.Should().Be("Updated");
+        history[1].PreviousEntityState.Should().Contain("audit@example.com");
+        history[1].CurrentEntityState.Should().Contain("Updated");
+        user.CreatedAt.Should().NotBe(default);
+        user.CreatedBy.Should().Be("system");
+    }
+
+    /// <summary>Verifies that audit records capture the authenticated actor and that the history table belongs to the audit schema.</summary>
+    /// <returns>A task representing the asynchronous test operation.</returns>
+    [Fact]
+    public async Task Audit_history_should_record_authenticated_actor_and_schema()
+    {
+        var accessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor-1") }, "test"))
+            }
+        };
+        await using ContextFixture fixture = await CreateContextAsync(accessor);
+        var user = new User("actor@example.com") { Email = "actor@example.com", EmailConfirmed = true };
+
+        fixture.Context.Users.Add(user);
+        await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        EntityAuditRecord history = await fixture.Context.EntityAuditHistory.SingleAsync(x => x.EntityId == user.Id, TestContext.Current.CancellationToken);
+        history.UpdatedBy.Should().Be("actor-1");
+        var auditEntity = fixture.Context.Model.FindEntityType(typeof(EntityAuditRecord));
+        auditEntity.Should().NotBeNull();
+        auditEntity!.GetSchema().Should().Be("audit");
+        auditEntity.GetTableName().Should().Be("EntityHistory");
+    }
+
     /// <summary>Verifies that user and role constructors assign non-empty identity identifiers.</summary>
     [Fact]
     public void User_and_role_constructors_should_initialize_identity_ids()
@@ -54,12 +109,12 @@ public sealed class PersistenceTests
         namedRole.Id.Should().NotBeNullOrWhiteSpace();
     }
 
-    private static async Task<ContextFixture> CreateContextAsync()
+    private static async Task<ContextFixture> CreateContextAsync(IHttpContextAccessor? accessor = null)
     {
         DbContextOptions<RemoteTicketsDbContext> options = new DbContextOptionsBuilder<RemoteTicketsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
             .Options;
-        var context = new RemoteTicketsDbContext(options);
+        var context = new RemoteTicketsDbContext(options, accessor);
         await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
         return new ContextFixture(context);
     }
