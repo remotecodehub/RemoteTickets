@@ -14,6 +14,8 @@ global using RemoteTickets.Application.Identity;
 global using RemoteTickets.Domain.Common;
 global using RemoteTickets.Infrastructure.Identity.Models;
 global using RemoteTickets.Infrastructure.Persistence;
+global using RemoteTickets.Infrastructure.Setup;
+global using RemoteTickets.Infrastructure.Identity.Services;
 global using Microsoft.AspNetCore.Identity;
 global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore;
