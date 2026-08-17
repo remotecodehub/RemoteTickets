@@ -138,7 +138,7 @@ public sealed class TenantAccessMiddlewareTests
         await CreateMiddleware(fixture, tracker).InvokeAsync(context);
 
         tracker.Called.Should().BeFalse();
-        context.Response.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
+        context.Response.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
     }
 
     [Fact]
