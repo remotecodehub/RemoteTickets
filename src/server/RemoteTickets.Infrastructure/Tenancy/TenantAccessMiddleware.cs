@@ -5,10 +5,7 @@ using RemoteTickets.Application.Common.Tenancy;
 namespace RemoteTickets.Infrastructure.Tenancy;
 
 /// <summary>Enforces tenant route isolation and mandatory setup state for HTTP requests.</summary>
-public sealed class TenantAccessMiddleware(
-    RequestDelegate next,
-    ITenantManagementService tenants,
-    IIdentityService identityService)
+public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManagementService tenants, IIdentityService identityService)
 {
     /// <summary>Processes the current request and enforces tenant isolation when a tenant route is present.</summary>
     /// <param name="context">The current HTTP context.</param>
@@ -25,12 +22,7 @@ public sealed class TenantAccessMiddleware(
         var systemStatus = await identityService.GetSetupStatusAsync(context.RequestAborted);
         if (systemStatus.IsSetupRequired)
         {
-            if (IsSetupEndpoint(context))
-            {
-                await next(context);
-                return;
-            }
-
+            if (IsSystemSetupEndpoint(context)) { await next(context); return; }
             await RejectOrRedirectAsync(context, "/setup", StatusCodes.Status503ServiceUnavailable);
             return;
         }
@@ -42,6 +34,17 @@ public sealed class TenantAccessMiddleware(
         }
 
         var tenantId = value.ToString()!;
+        if (string.Equals(tenantId, "system", StringComparison.OrdinalIgnoreCase))
+        {
+            if (context.User.Identity?.IsAuthenticated != true || !context.User.IsInRole(TenantRoles.SysAdmin))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+            await next(context);
+            return;
+        }
+
         var tenant = await tenants.GetAsync(tenantId, context.RequestAborted);
         if (tenant is null || !tenant.IsActive)
         {
@@ -68,9 +71,17 @@ public sealed class TenantAccessMiddleware(
         await next(context);
     }
 
-    private static bool IsSetupEndpoint(HttpContext context) => context.Request.Path.StartsWithSegments("/api/setup", StringComparison.OrdinalIgnoreCase) || context.Request.Path.Equals("/setup", StringComparison.OrdinalIgnoreCase);
+    private static bool IsSystemSetupEndpoint(HttpContext context) => context.Request.Path.StartsWithSegments("/api/setup") || string.Equals(context.Request.Path.Value, "/setup", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsTenantSetupEndpoint(HttpContext context) => context.Request.Path.StartsWithSegments($"/{context.Request.RouteValues["tenantId"]}/setup", StringComparison.OrdinalIgnoreCase) || context.Request.Path.StartsWithSegments("/api/v1/", StringComparison.OrdinalIgnoreCase) && context.Request.Path.Value?.EndsWith("/setup", StringComparison.OrdinalIgnoreCase) == true;
+    private static bool IsTenantSetupEndpoint(HttpContext context)
+    {
+        var tenantId = context.Request.RouteValues.TryGetValue("tenantId", out var value) ? value?.ToString() : null;
+        if (string.IsNullOrWhiteSpace(tenantId)) return false;
+        var path = context.Request.Path.Value;
+        return string.Equals(path, $"/{tenantId}/setup", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(path, $"/api/v1/{tenantId}/setup", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(path, $"/api/v1/{tenantId}/setup/complete", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static async Task RejectOrRedirectAsync(HttpContext context, string location, int statusCode)
     {
