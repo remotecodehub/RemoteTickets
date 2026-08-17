@@ -1,0 +1,63 @@
+@page "/setup"
+@using System.Net.Http.Json
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>System setup</PageTitle>
+
+<h1>System setup</h1>
+<p>Configure the master SQL Server database and create the first system administrator before using the application.</p>
+
+<div>
+    <label>Master connection string</label>
+    <input @bind="ConnectionString" style="width:100%" />
+</div>
+<div>
+    <label>Administrator email</label>
+    <input @bind="Email" />
+</div>
+<div>
+    <label>Administrator password</label>
+    <input type="password" @bind="Password" />
+</div>
+<button @onclick="InitializeAsync" disabled="Busy">Initialize</button>
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <p>@Message</p>
+}
+
+@code {
+    private bool Busy;
+    private string ConnectionString = string.Empty;
+    private string Email = string.Empty;
+    private string Password = string.Empty;
+    private string Message = string.Empty;
+
+    private async Task InitializeAsync()
+    {
+        Busy = true;
+        Message = string.Empty;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            client.BaseAddress = new Uri(Navigation.BaseUri);
+            var configure = await client.PostAsJsonAsync("api/setup/master-database", new { ConnectionString });
+            if (!configure.IsSuccessStatusCode)
+            {
+                Message = "The master database configuration could not be stored.";
+                return;
+            }
+
+            var initialize = await client.PostAsJsonAsync("api/setup/initialize", new { Email, Password });
+            Message = initialize.IsSuccessStatusCode ? "Setup completed. You can now sign in." : await initialize.Content.ReadAsStringAsync();
+        }
+        catch (Exception exception)
+        {
+            Message = exception.Message;
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+}
