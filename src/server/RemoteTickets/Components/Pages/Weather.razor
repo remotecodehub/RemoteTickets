@@ -1,11 +1,10 @@
-﻿@page "/weather"
+@page "/{tenantId}/weather"
 @attribute [StreamRendering]
 
 <PageTitle>Weather</PageTitle>
 
 <h1>Weather</h1>
-
-<p>This component demonstrates showing data.</p>
+<p>Tenant: @tenantId</p>
 
 @if (forecasts == null)
 {
@@ -14,36 +13,23 @@
 else
 {
     <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th aria-label="Temperature in Celsius">Temp. (C)</th>
-                <th aria-label="Temperature in Fahrenheit">Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
+        <thead><tr><th>Date</th><th>Temp. (C)</th><th>Temp. (F)</th><th>Summary</th></tr></thead>
         <tbody>
             @foreach (var forecast in forecasts)
             {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
+                <tr><td>@forecast.Date.ToShortDateString()</td><td>@forecast.TemperatureC</td><td>@forecast.TemperatureF</td><td>@forecast.Summary</td></tr>
             }
         </tbody>
     </table>
 }
 
 @code {
+    [Parameter] public string tenantId { get; set; } = string.Empty;
     private WeatherForecast[]? forecasts;
 
     protected override async Task OnInitializedAsync()
     {
-        // Simulate asynchronous loading to demonstrate streaming rendering
         await Task.Delay(500);
-
         var startDate = DateOnly.FromDateTime(DateTime.Now);
         var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
         forecasts = Enumerable.Range(1, 5).Select(index => new WeatherForecast
@@ -54,7 +40,7 @@ else
         }).ToArray();
     }
 
-    private class WeatherForecast
+    private sealed class WeatherForecast
     {
         public DateOnly Date { get; set; }
         public int TemperatureC { get; set; }
