@@ -13,12 +13,7 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
     public async Task InvokeAsync(HttpContext context)
     {
         var endpoint = context.GetEndpoint();
-        if (endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null)
-        {
-            await next(context);
-            return;
-        }
-
+        var anonymous = endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
         var systemStatus = await identityService.GetSetupStatusAsync(context.RequestAborted);
         if (systemStatus.IsSetupRequired)
         {
@@ -29,7 +24,8 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
 
         if (!context.Request.RouteValues.TryGetValue("tenantId", out var value) || string.IsNullOrWhiteSpace(value?.ToString()))
         {
-            await next(context);
+            if (anonymous) await next(context);
+            else await RejectOrRedirectAsync(context, "/setup", StatusCodes.Status503ServiceUnavailable);
             return;
         }
 
@@ -52,7 +48,24 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
             return;
         }
 
-        if (context.User.Identity?.IsAuthenticated == true && !context.User.IsInRole(TenantRoles.SysAdmin))
+        if (anonymous)
+        {
+            if (!tenant.IsSetupComplete && !IsTenantSetupEndpoint(context) && !IsTenantLoginEndpoint(context))
+            {
+                await RejectOrRedirectAsync(context, $"/{tenantId}/setup", StatusCodes.Status409Conflict);
+                return;
+            }
+            await next(context);
+            return;
+        }
+
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        if (!context.User.IsInRole(TenantRoles.SysAdmin))
         {
             var assignedTenant = context.User.FindFirst(TenantClaimTypes.TenantId)?.Value;
             if (!string.Equals(assignedTenant, tenantId, StringComparison.OrdinalIgnoreCase))
@@ -73,6 +86,8 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
 
     private static bool IsSystemSetupEndpoint(HttpContext context) => context.Request.Path.StartsWithSegments("/api/setup") || string.Equals(context.Request.Path.Value, "/setup", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsTenantLoginEndpoint(HttpContext context) => string.Equals(context.Request.Path.Value, $"/api/v1/{context.Request.RouteValues["tenantId"]}/login", StringComparison.OrdinalIgnoreCase);
+
     private static bool IsTenantSetupEndpoint(HttpContext context)
     {
         var tenantId = context.Request.RouteValues.TryGetValue("tenantId", out var value) ? value?.ToString() : null;
@@ -90,7 +105,6 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
             context.Response.Redirect(location);
             return;
         }
-
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsJsonAsync(new { title = "Setup required", detail = "Complete the required setup before using this endpoint.", setup = location }, context.RequestAborted);
