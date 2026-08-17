@@ -8,7 +8,7 @@ public static class WebApplicationBuilderExtensions
         /// <summary>Registers all application, persistence, identity, validation, authentication, authorization, and tenant services.</summary>
         /// <returns>The same application builder for fluent composition.</returns>
         /// <exception cref="InvalidOperationException">Thrown when required JWT configuration is missing or its secret key is too short.</exception>
-        public WebApplication BuildRemoteTickets()
+        public async Task RunRemoteTicketsAsync<T>() where T : IComponent
         {
             var services = builder.Services;
             var configuration = builder.Configuration;
@@ -22,9 +22,13 @@ public static class WebApplicationBuilderExtensions
             services.AddSingleton<ISetupConfigurationStore, SetupConfigurationStore>();
             services.AddDbContext<RemoteTicketsDbContext>((sp, options) =>
             {
-                var setup = sp.GetRequiredService<ISetupConfigurationStore>();
-                var connectionString = setup.GetMasterConnectionString() ?? configuration.GetConnectionString("Identity") ?? configuration.GetConnectionString("Master");
-                if (string.IsNullOrWhiteSpace(connectionString)) throw new InvalidOperationException("A master database connection string is required.");
+                ISetupConfigurationStore setup = sp.GetRequiredService<ISetupConfigurationStore>();
+                string connectionString = setup.GetMasterConnectionString() ?? configuration.GetConnectionString("Identity") ?? configuration.GetConnectionString("Master") ?? "";
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    throw new InvalidOperationException("A master database connection string is required.");
+                }
+
                 options.UseSqlServer(connectionString);
             });
 
@@ -98,7 +102,7 @@ public static class WebApplicationBuilderExtensions
                 .ConfigureCommandReceivePipe(pipe => pipe.UseValidation())
                 .ConfigureRequestPipe(pipe => pipe.UseValidation());
             services.RegisterMediator(mb);
-            return builder.Build();
+            await builder.Build().RunRemoteTickets<T>();
         }
     }
 }

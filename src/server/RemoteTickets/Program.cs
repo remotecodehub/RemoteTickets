@@ -1,4 +1,3 @@
 await WebApplication
     .CreateBuilder(args)
-    .BuildRemoteTickets()
-    .RunAsync();
+    .RunRemoteTicketsAsync<App>();
