@@ -2,8 +2,17 @@
 
 <PageTitle>Home</PageTitle>
 
-<h1>RemoteTickets</h1>
-<p>Tenant: <strong>@TenantId</strong></p>
-@code{
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <MudPaper Elevation="2" Class="pa-6">
+        <MudText Typo="Typo.h3" GutterBottom="true">RemoteTickets</MudText>
+        <MudText Typo="Typo.body1">Welcome to the tenant workspace.</MudText>
+        <MudDivider Class="my-4" />
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            Tenant: <strong>@TenantId</strong>
+        </MudAlert>
+    </MudPaper>
+</MudContainer>
+
+@code {
     [Parameter] public string TenantId { get; set; } = string.Empty;
 }
