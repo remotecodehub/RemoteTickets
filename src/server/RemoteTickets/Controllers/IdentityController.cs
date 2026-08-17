@@ -11,10 +11,9 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromRoute] string tenantId, RegisterRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<RegisterCommand, IdentityResultResponse>(new RegisterCommand(request.Email, request.Password));
+        var result = await mediator.RequestAsync<RegisterCommand, IdentityResultResponse>(new RegisterCommand(request.Email, request.Password), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
-
     /// <summary>Authenticates a user against the requested tenant.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
@@ -23,16 +22,14 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<LoginCommand, Response<TokenResponse>>(new LoginCommand(request.Email, request.Password, request.TwoFactorCode, request.TwoFactorRecoveryCode, tenantId), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : Unauthorized(result);
     }
-
     /// <summary>Exchanges a refresh token for a new token pair in the requested tenant context.</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
-    public async Task<IActionResult> Refresh(RefreshRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Refresh([FromRoute] string tenantId, RefreshRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<RefreshTokenCommand, Response<TokenResponse>>(new RefreshTokenCommand(request.RefreshToken), cancellationToken);
+        var result = await mediator.RequestAsync<RefreshTokenCommand, Response<TokenResponse>>(new RefreshTokenCommand(request.RefreshToken, tenantId), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : Unauthorized(result);
     }
-
     /// <summary>Revokes the access token supplied by the authenticated caller.</summary>
     [HttpPost("revoke")]
     [Authorize]
@@ -42,7 +39,6 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<RevokeTokenCommand, Response<bool>>(new RevokeTokenCommand(accessToken), cancellationToken);
         return result.Data == true ? Ok() : Unauthorized(result);
     }
-
     /// <summary>Confirms a user's email address.</summary>
     [HttpGet("confirmEmail")]
     [AllowAnonymous]
@@ -51,7 +47,6 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<ConfirmEmailCommand, Response<bool>>(new ConfirmEmailCommand(userId, code, changedEmail), cancellationToken);
         return result.Data == true ? Ok("Thank you for confirming your email.") : BadRequest(result);
     }
-
     /// <summary>Resends a user's email confirmation link.</summary>
     [HttpPost("resendConfirmationEmail")]
     [AllowAnonymous]
@@ -60,7 +55,6 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<ResendConfirmationEmailCommand, IdentityResultResponse>(new ResendConfirmationEmailCommand(request.Email), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
-
     /// <summary>Starts password recovery for an email address.</summary>
     [HttpPost("forgotPassword")]
     [AllowAnonymous]
@@ -69,7 +63,6 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<ForgotPasswordCommand, IdentityResultResponse>(new ForgotPasswordCommand(request.Email), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
-
     /// <summary>Resets a user's password using a reset token.</summary>
     [HttpPost("resetPassword")]
     [AllowAnonymous]
@@ -78,7 +71,6 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<ResetPasswordCommand, IdentityResultResponse>(new ResetPasswordCommand(request.Email, request.ResetCode, request.NewPassword), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
-
     /// <summary>Gets identity information for the authenticated user.</summary>
     [HttpGet("manage/info")]
     [Authorize]
@@ -89,7 +81,6 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<GetIdentityInfoQuery, Response<IdentityInfoResponse>>(new GetIdentityInfoQuery(userId), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : NotFound(result);
     }
-
     /// <summary>Updates identity information for the authenticated user.</summary>
     [HttpPost("manage/info")]
     [Authorize]
@@ -100,7 +91,6 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<UpdateIdentityInfoCommand, IdentityResultResponse>(new UpdateIdentityInfoCommand(userId, request.NewEmail, request.NewPassword, request.OldPassword), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
-
     /// <summary>Configures authenticator-based two-factor authentication for the authenticated user.</summary>
     [HttpPost("manage/2fa")]
     [Authorize]
@@ -111,7 +101,6 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
         var result = await mediator.RequestAsync<ConfigureTwoFactorCommand, Response<TwoFactorResponse>>(new ConfigureTwoFactorCommand(userId, request.Enable, request.TwoFactorCode, request.ResetRecoveryCodes, request.ResetSharedKey, request.ForgetMachine), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : BadRequest(result);
     }
-
     private string? GetUserId() => User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
@@ -139,7 +128,7 @@ public sealed record ResetPasswordRequest(string Email, string ResetCode, string
 /// <summary>Represents an authenticated identity information update payload.</summary>
 /// <param name="NewEmail">The replacement email address.</param>
 /// <param name="NewPassword">The replacement password.</param>
-/// <param name="OldPassword">The replacement password.</param>
+/// <param name="OldPassword">The current password.</param>
 public sealed record InfoRequest(string? NewEmail, string? NewPassword, string OldPassword);
 /// <summary>Represents an authenticator-based two-factor configuration request.</summary>
 /// <param name="Enable">Whether to enable or disable two-factor authentication.</param>
