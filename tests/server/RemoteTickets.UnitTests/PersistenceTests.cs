@@ -3,7 +3,7 @@ namespace RemoteTickets.UnitTests;
 /// <summary>Verifies Entity Framework Core persistence behavior for soft-deletable and auditable identity entities.</summary>
 public sealed class PersistenceTests
 {
-    /// <summary>Verifies that soft-deleted users are hidden by the configured query filter.</summary>
+    /// <summary>Verifies that soft-deleted users are hidden by the configured query filter and audited as deletions.</summary>
     /// <returns>A task representing the asynchronous test operation.</returns>
     [Fact]
     public async Task Soft_deleted_users_should_be_hidden_by_query_filter()
@@ -20,6 +20,7 @@ public sealed class PersistenceTests
         user.DeletedAt.Should().NotBeNull();
         (await fixture.Context.Users.SingleOrDefaultAsync(x => x.Id == user.Id)).Should().BeNull();
         (await fixture.Context.Users.IgnoreQueryFilters().SingleAsync(x => x.Id == user.Id)).IsDeleted.Should().BeTrue();
+        (await fixture.Context.EntityAuditHistory.Where(x => x.EntityId == user.Id).OrderBy(x => x.UpdatedAt).LastAsync(TestContext.Current.CancellationToken)).Operation.Should().Be("Deleted");
     }
 
     /// <summary>Verifies that asynchronous save operations apply the same soft-delete behavior.</summary>
