@@ -3,22 +3,24 @@ namespace RemoteTickets.Controllers;
 /// <summary>Exposes anonymous endpoints used during first-time application setup.</summary>
 /// <param name="mediator">The mediator used to dispatch setup requests.</param>
 /// <param name="configurationStore">The store used to persist the master database connection.</param>
+/// <param name="dbContext">The central database context used to initialize the master schema.</param>
 [ApiController]
 [Route("api/setup")]
-public sealed class SetupController(IMediator mediator, ISetupConfigurationStore configurationStore) : ControllerBase
+public sealed class SetupController(IMediator mediator, ISetupConfigurationStore configurationStore, RemoteTicketsDbContext dbContext) : ControllerBase
 {
     /// <summary>Gets the current first-time setup status.</summary>
     [HttpGet("status")]
     [AllowAnonymous]
     public Task<SetupStatusResponse> GetStatus(CancellationToken cancellationToken) => mediator.RequestAsync<GetSetupStatusQuery, SetupStatusResponse>(new GetSetupStatusQuery(), cancellationToken);
 
-    /// <summary>Persists the master database connection string used to administer tenants.</summary>
+    /// <summary>Persists the master database connection string and initializes its schema.</summary>
     [HttpPost("master-database")]
     [AllowAnonymous]
     public async Task<IActionResult> ConfigureMasterDatabase(MasterDatabaseSetupRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.ConnectionString)) return BadRequest(new { error = "A master database connection string is required." });
         await configurationStore.SetMasterConnectionStringAsync(request.ConnectionString, cancellationToken);
+        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
         return Ok();
     }
 
