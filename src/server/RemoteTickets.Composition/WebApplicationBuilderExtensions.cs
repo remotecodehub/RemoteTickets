@@ -18,6 +18,7 @@ public static class WebApplicationBuilderExtensions
             services.AddMudServices();
             services.AddControllers();
             services.AddHttpClient();
+            services.AddHttpContextAccessor();
             services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
             services.AddSingleton<ISetupConfigurationStore, SetupConfigurationStore>();
             services.AddDbContext<RemoteTicketsDbContext>((sp, options) =>
