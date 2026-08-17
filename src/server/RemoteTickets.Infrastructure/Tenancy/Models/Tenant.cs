@@ -1,7 +1,7 @@
 namespace RemoteTickets.Infrastructure.Tenancy.Models;
 
 /// <summary>Represents a tenant registered in the installation catalog.</summary>
-public sealed class Tenant : IEntityBase, ISoftDeletable
+public sealed class Tenant : IEntityBase, ISoftDeletable, IEntityAuditable
 {
     /// <summary>Gets or sets the stable tenant identifier used by routes and tokens.</summary>
     public string Id { get; set; } = string.Empty;
@@ -15,10 +15,12 @@ public sealed class Tenant : IEntityBase, ISoftDeletable
     public bool IsActive { get; set; } = true;
     /// <summary>Gets or sets whether tenant setup has completed.</summary>
     public bool IsSetupComplete { get; set; }
-    /// <summary>Gets or sets the tenant creation timestamp.</summary>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    /// <inheritdoc />
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    /// <inheritdoc />
+    public string CreatedBy { get; init; } = string.Empty;
     /// <summary>Flag to indicate if the entity is deleted.</summary>
-    public bool IsDeleted { get; set; } 
-    /// <summary>DateTimeOffset (UTC) of when the entity was deleted..</summary>
+    public bool IsDeleted { get; set; }
+    /// <summary>DateTimeOffset (UTC) of when the entity is deleted.</summary>
     public DateTimeOffset? DeletedAt { get; set; }
 }
