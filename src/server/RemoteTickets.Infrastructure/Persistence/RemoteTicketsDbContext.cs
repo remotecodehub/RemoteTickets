@@ -105,6 +105,7 @@ public sealed class RemoteTicketsDbContext(DbContextOptions<RemoteTicketsDbConte
             string operation = entry.State switch
             {
                 EntityState.Added => "Created",
+                EntityState.Modified when IsSoftDeleteTransition(entry) => "Deleted",
                 EntityState.Modified => "Updated",
                 EntityState.Deleted => "Deleted",
                 _ => throw new InvalidOperationException("Unsupported audit state.")
@@ -128,6 +129,17 @@ public sealed class RemoteTicketsDbContext(DbContextOptions<RemoteTicketsDbConte
         {
             EntityAuditHistory.AddRange(auditEntries);
         }
+    }
+
+    private static bool IsSoftDeleteTransition(EntityEntry<IEntityAuditable> entry)
+    {
+        if (!entry.Metadata.ClrType.GetInterfaces().Contains(typeof(ISoftDeletable)))
+        {
+            return false;
+        }
+
+        PropertyEntry? deletedProperty = entry.Properties.FirstOrDefault(x => string.Equals(x.Metadata.Name, nameof(ISoftDeletable.IsDeleted), StringComparison.OrdinalIgnoreCase));
+        return deletedProperty?.CurrentValue is true && deletedProperty.OriginalValue is false;
     }
 
     private string GetActor()
