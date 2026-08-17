@@ -8,7 +8,7 @@ public sealed class IdentityFailurePathTests
     [Fact]
     public async Task Identity_service_should_fail_safely_for_invalid_credentials_and_tokens()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
 
         (await fixture.Service.LoginAsync("missing@example.com", "Password1!", null, null, CancellationToken.None)).Should().BeNull();
         (await fixture.Service.RefreshAsync("not-a-token", CancellationToken.None)).Should().BeNull();
@@ -23,7 +23,7 @@ public sealed class IdentityFailurePathTests
     [Fact]
     public async Task Resend_confirmation_should_be_idempotent_for_unknown_or_confirmed_users()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
 
         (await fixture.Service.ResendConfirmationEmailAsync("missing@example.com", CancellationToken.None)).Succeeded.Should().BeTrue();
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);

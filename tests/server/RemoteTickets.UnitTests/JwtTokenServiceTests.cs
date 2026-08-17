@@ -10,7 +10,7 @@ public sealed class JwtTokenServiceTests
         var store = new RevokedTokenStore();
         var service = new JwtTokenService(Options.Create(new JwtOptions { SecretKey = "short" }), store);
 
-        var action = () => service.CreateTokens("user", "user@example.com", [], []);
+        Func<TokenResponse> action = () => service.CreateTokens("user", "user@example.com", [], []);
         action.Should().Throw<InvalidOperationException>();
     }
 
@@ -31,10 +31,10 @@ public sealed class JwtTokenServiceTests
     public void Token_service_should_round_trip_claims_and_metadata()
     {
         var store = new RevokedTokenStore();
-        var service = CreateService(store);
-        var tokens = service.CreateTokens("user-id", "user@example.com", ["Administrator"], [new Claim(IdentityClaimTypes.Permission, "system.admin")]);
+        JwtTokenService service = CreateService(store);
+        TokenResponse tokens = service.CreateTokens("user-id", "user@example.com", ["Administrator"], [new Claim(IdentityClaimTypes.Permission, "system.admin")]);
 
-        var principal = service.ValidateToken(tokens.AccessToken);
+        ClaimsPrincipal? principal = service.ValidateToken(tokens.AccessToken);
         principal.Should().NotBeNull();
         principal!.FindFirstValue(ClaimTypes.Role).Should().Be("Administrator");
         principal.FindFirstValue(IdentityClaimTypes.Permission).Should().Be("system.admin");
@@ -51,9 +51,9 @@ public sealed class JwtTokenServiceTests
     public void Token_service_should_reject_a_revoked_token()
     {
         var store = new RevokedTokenStore();
-        var service = CreateService(store);
-        var tokens = service.CreateTokens("user-id", "user@example.com", [], []);
-        var tokenId = service.GetTokenId(tokens.AccessToken);
+        JwtTokenService service = CreateService(store);
+        TokenResponse tokens = service.CreateTokens("user-id", "user@example.com", [], []);
+        string? tokenId = service.GetTokenId(tokens.AccessToken);
         tokenId.Should().NotBeNull();
 
         store.Revoke(tokenId!, DateTimeOffset.UtcNow.AddMinutes(1));

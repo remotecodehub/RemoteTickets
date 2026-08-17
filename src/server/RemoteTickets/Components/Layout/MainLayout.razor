@@ -1,23 +1,35 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6">RemoteTickets</MudText>
+        <MudSpacer />
+        <MudText Typo="Typo.body2">Tenant-aware ticket management</MudText>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="DrawerOpen" Elevation="2" Variant="DrawerVariant.Responsive">
         <NavMenu />
-    </div>
+    </MudDrawer>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+    <MudMainContent Class="pa-4">
+        @Body
+    </MudMainContent>
+</MudLayout>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+<MudPaper id="blazor-error-ui" Class="pa-4 ma-4" Elevation="4" Style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:2000;">
+    <MudText>An unhandled error has occurred.</MudText>
+    <MudLink Href=".">Reload</MudLink>
+    <MudIconButton Icon="@Icons.Material.Filled.Close" />
+</MudPaper>
 
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div>
+@code {
+    private bool DrawerOpen = true;
+
+    private void ToggleDrawer() => DrawerOpen = !DrawerOpen;
+}

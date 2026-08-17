@@ -1,4 +1,4 @@
-name: CI - CT - CD
+name: Continuous Integration - Testing - Deploy
 
 on:
   push:
@@ -91,6 +91,7 @@ jobs:
 
           if ($coverageFiles.Count -eq 0) {
             "## Coverage gate`n`nNo Coverlet XML was found under the test-results GUID subdirectories." | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            Write-Error "Coverage data was not produced."
             return
           }
 
@@ -99,26 +100,20 @@ jobs:
           $lineRate = [double]$coverage.coverage.'line-rate' * 100
           $branchRate = [double]$coverage.coverage.'branch-rate' * 100
 
-          @"           
+          @"
           ## Coverage gate
           | Metric | Result | Minimum | Status |
           | --- | ---: | ---: | --- |
+          | Line coverage | $([math]::Round($lineRate, 2))% | 80% | $(if ($lineRate -ge 80) { '✅' } else { '❌' }) |
+          | Branch coverage | $([math]::Round($branchRate, 2))% | 80% | $(if ($branchRate -ge 80) { '✅' } else { '❌' }) |
           "@ | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
+          "LINE_COVERAGE=$([math]::Round($lineRate, 2))" | Out-File artifacts/line-rate.txt -Encoding utf8
+          "BRANCH_COVERAGE=$([math]::Round($branchRate, 2))" | Out-File artifacts/branch-rate.txt -Encoding utf8
 
-          if ($lineRate -ge 80) {
-            "| Line coverage | $([math]::Round($lineRate, 2))% | 80% | ✅ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-          } else {
-            "| Line coverage | $([math]::Round($lineRate, 2))% | 80% | ❌ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          if ($lineRate -lt 80 -or $branchRate -lt 80) {
+            Write-Error "Coverage gate failed. Line coverage: $([math]::Round($lineRate, 2))%; Branch coverage: $([math]::Round($branchRate, 2))%; minimum: 80%."
           }
-
-          if ($branchRate -ge 80) {
-            "| Branch coverage | $([math]::Round($branchRate, 2))% | 80% | ✅ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-          } else {
-            "| Branch coverage | $([math]::Round($branchRate, 2))% | 80% | ❌ |" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-          }
-          
-
 
       - name: Append test execution report
         if: always()
