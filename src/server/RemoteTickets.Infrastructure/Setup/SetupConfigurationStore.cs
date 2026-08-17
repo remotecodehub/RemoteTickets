@@ -24,10 +24,14 @@ public sealed class SetupConfigurationStore : ISetupConfigurationStore
     /// <inheritdoc />
     public string? GetMasterConnectionString()
     {
-        if (!File.Exists(_path)) return null;
+        if (!File.Exists(_path))
+        {
+            return null;
+        }
+
         try
         {
-            var state = JsonSerializer.Deserialize<State>(File.ReadAllText(_path));
+            State? state = JsonSerializer.Deserialize<State>(File.ReadAllText(_path));
             return state?.MasterConnectionString;
         }
         catch (JsonException)
@@ -39,7 +43,11 @@ public sealed class SetupConfigurationStore : ISetupConfigurationStore
     /// <inheritdoc />
     public async Task SetMasterConnectionStringAsync(string connectionString, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentException("A master database connection string is required.", nameof(connectionString));
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new ArgumentException("A master database connection string is required.", nameof(connectionString));
+        }
+
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         string json = JsonSerializer.Serialize(new State(connectionString));
         await File.WriteAllTextAsync(_path, json, cancellationToken);

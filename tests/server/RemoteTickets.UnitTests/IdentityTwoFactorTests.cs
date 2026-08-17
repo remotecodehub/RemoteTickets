@@ -8,10 +8,10 @@ public sealed class IdentityTwoFactorTests
     [Fact]
     public async Task Two_factor_should_be_configurable_and_used_during_login()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
 
-        var user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
+        User? user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
         user.Should().NotBeNull();
 
         await fixture.UserManager.ResetAuthenticatorKeyAsync(user!);
@@ -19,17 +19,17 @@ public sealed class IdentityTwoFactorTests
         key.Should().NotBeNullOrWhiteSpace();
         string code = CreateAuthenticatorCode(key!, DateTimeOffset.UtcNow);
 
-        var enabled = await fixture.Service.ConfigureTwoFactorAsync(user!.Id, true, code, true, false, false, CancellationToken.None);
+        TwoFactorResponse? enabled = await fixture.Service.ConfigureTwoFactorAsync(user!.Id, true, code, true, false, false, CancellationToken.None);
         enabled.Should().NotBeNull();
         enabled!.IsTwoFactorEnabled.Should().BeTrue();
         enabled.RecoveryCodes.Should().NotBeNullOrEmpty();
 
         string? loginKey = await fixture.UserManager.GetAuthenticatorKeyAsync(user);
         string loginCode = CreateAuthenticatorCode(loginKey!, DateTimeOffset.UtcNow);
-        var login = await fixture.Service.LoginAsync("admin@example.com", "Password1!", loginCode, null, CancellationToken.None);
+        TokenResponse? login = await fixture.Service.LoginAsync("admin@example.com", "Password1!", loginCode, null, CancellationToken.None);
         login.Should().NotBeNull();
 
-        var disabled = await fixture.Service.ConfigureTwoFactorAsync(user.Id, false, null, false, true, false, CancellationToken.None);
+        TwoFactorResponse? disabled = await fixture.Service.ConfigureTwoFactorAsync(user.Id, false, null, false, true, false, CancellationToken.None);
         disabled.Should().NotBeNull();
         disabled!.IsTwoFactorEnabled.Should().BeFalse();
     }
@@ -39,12 +39,12 @@ public sealed class IdentityTwoFactorTests
     [Fact]
     public async Task Two_factor_should_reject_unknown_user_and_invalid_code()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
 
         (await fixture.Service.ConfigureTwoFactorAsync("missing", true, "123456", false, false, false, CancellationToken.None)).Should().BeNull();
 
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
-        var user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
+        User? user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
         user.Should().NotBeNull();
 
         (await fixture.Service.ConfigureTwoFactorAsync(user!.Id, true, "123456", false, false, false, CancellationToken.None)).Should().BeNull();
@@ -55,12 +55,12 @@ public sealed class IdentityTwoFactorTests
     [Fact]
     public async Task Two_factor_should_generate_recovery_codes_when_requested()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
-        var user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
+        User? user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
         user.Should().NotBeNull();
 
-        var result = await fixture.Service.ConfigureTwoFactorAsync(user!.Id, null, null, true, false, true, CancellationToken.None);
+        TwoFactorResponse? result = await fixture.Service.ConfigureTwoFactorAsync(user!.Id, null, null, true, false, true, CancellationToken.None);
         result.Should().NotBeNull();
         result!.RecoveryCodes.Should().NotBeNullOrEmpty();
         result.IsTwoFactorEnabled.Should().BeFalse();

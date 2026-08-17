@@ -8,25 +8,25 @@ public sealed class IdentityServiceTests
     [Fact]
     public async Task Setup_should_create_administrator_and_issue_revocable_tokens()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
-        var service = fixture.Service;
-        var before = await service.GetSetupStatusAsync(CancellationToken.None);
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
+        IdentityService service = fixture.Service;
+        SetupStatusResponse before = await service.GetSetupStatusAsync(CancellationToken.None);
         before.IsSetupRequired.Should().BeTrue();
         before.IsSetupComplete.Should().BeFalse();
-        var setup = await service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
+        IdentityResultResponse setup = await service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
         setup.Succeeded.Should().BeTrue();
-        var after = await service.GetSetupStatusAsync(CancellationToken.None);
+        SetupStatusResponse after = await service.GetSetupStatusAsync(CancellationToken.None);
         after.IsSetupRequired.Should().BeFalse();
         after.IsSetupComplete.Should().BeTrue();
-        var duplicate = await service.InitializeSetupAsync("second@example.com", "Password1!", CancellationToken.None);
+        IdentityResultResponse duplicate = await service.InitializeSetupAsync("second@example.com", "Password1!", CancellationToken.None);
         duplicate.Succeeded.Should().BeFalse();
-        var tokens = await service.LoginAsync("admin@example.com", "Password1!", null, null, CancellationToken.None);
+        TokenResponse? tokens = await service.LoginAsync("admin@example.com", "Password1!", null, null, CancellationToken.None);
         tokens.Should().NotBeNull();
-        var principal = fixture.TokenService.ValidateToken(tokens!.AccessToken);
+        ClaimsPrincipal? principal = fixture.TokenService.ValidateToken(tokens!.AccessToken);
         principal.Should().NotBeNull();
         principal!.FindAll(ClaimTypes.Role).Select(x => x.Value).Should().Contain("Administrator");
         principal.FindAll(IdentityClaimTypes.Permission).Select(x => x.Value).Should().Contain("system.admin");
-        var refreshed = await service.RefreshAsync(tokens.RefreshToken, CancellationToken.None);
+        TokenResponse? refreshed = await service.RefreshAsync(tokens.RefreshToken, CancellationToken.None);
         refreshed.Should().NotBeNull();
         fixture.TokenService.ValidateToken(tokens.RefreshToken).Should().BeNull();
         bool revoked = await service.RevokeAsync(refreshed!.AccessToken, CancellationToken.None);
@@ -39,23 +39,23 @@ public sealed class IdentityServiceTests
     [Fact]
     public async Task Registration_confirmation_and_password_reset_should_work()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
-        var registration = await fixture.Service.RegisterAsync("user@example.com", "Password1!", CancellationToken.None);
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
+        IdentityResultResponse registration = await fixture.Service.RegisterAsync("user@example.com", "Password1!", CancellationToken.None);
         registration.Succeeded.Should().BeTrue();
         fixture.EmailSender.ConfirmationLinks.Should().ContainSingle();
-        var confirmationQuery = ParseQuery(fixture.EmailSender.ConfirmationLinks.Single());
+        Dictionary<string, string> confirmationQuery = ParseQuery(fixture.EmailSender.ConfirmationLinks.Single());
         bool confirmed = await fixture.Service.ConfirmEmailAsync(confirmationQuery["userId"], confirmationQuery["code"], null, CancellationToken.None);
         confirmed.Should().BeTrue();
-        var info = await fixture.Service.GetInfoAsync(confirmationQuery["userId"], CancellationToken.None);
+        IdentityInfoResponse? info = await fixture.Service.GetInfoAsync(confirmationQuery["userId"], CancellationToken.None);
         info.Should().NotBeNull();
         info!.IsEmailConfirmed.Should().BeTrue();
-        var forgot = await fixture.Service.ForgotPasswordAsync("user@example.com", CancellationToken.None);
+        IdentityResultResponse forgot = await fixture.Service.ForgotPasswordAsync("user@example.com", CancellationToken.None);
         forgot.Succeeded.Should().BeTrue();
         fixture.EmailSender.PasswordResetLinks.Should().ContainSingle();
-        var resetQuery = ParseQuery(fixture.EmailSender.PasswordResetLinks.Single());
-        var reset = await fixture.Service.ResetPasswordAsync("user@example.com", resetQuery["code"], "Password2!", CancellationToken.None);
+        Dictionary<string, string> resetQuery = ParseQuery(fixture.EmailSender.PasswordResetLinks.Single());
+        IdentityResultResponse reset = await fixture.Service.ResetPasswordAsync("user@example.com", resetQuery["code"], "Password2!", CancellationToken.None);
         reset.Succeeded.Should().BeTrue();
-        var login = await fixture.Service.LoginAsync("user@example.com", "Password2!", null, null, CancellationToken.None);
+        TokenResponse? login = await fixture.Service.LoginAsync("user@example.com", "Password2!", null, null, CancellationToken.None);
         login.Should().NotBeNull();
     }
 
@@ -64,13 +64,13 @@ public sealed class IdentityServiceTests
     [Fact]
     public async Task Update_info_should_change_email_and_password_after_current_password_validation()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
-        var user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
+        User? user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
         user.Should().NotBeNull();
-        var result = await fixture.Service.UpdateInfoAsync(user!.Id, "new-admin@example.com", "Password2!", "Password1!", CancellationToken.None);
+        IdentityResultResponse result = await fixture.Service.UpdateInfoAsync(user!.Id, "new-admin@example.com", "Password2!", "Password1!", CancellationToken.None);
         result.Succeeded.Should().BeTrue();
-        var login = await fixture.Service.LoginAsync("new-admin@example.com", "Password2!", null, null, CancellationToken.None);
+        TokenResponse? login = await fixture.Service.LoginAsync("new-admin@example.com", "Password2!", null, null, CancellationToken.None);
         login.Should().NotBeNull();
     }
 
@@ -134,7 +134,7 @@ internal sealed class IdentityFixture : IAsyncDisposable
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IIdentityEmailSender>(emailSender);
         services.AddScoped<IdentityService>();
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         await provider.GetRequiredService<RemoteTicketsDbContext>().Database.EnsureCreatedAsync();
         return new IdentityFixture(provider, emailSender);
     }

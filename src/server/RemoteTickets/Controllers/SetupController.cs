@@ -17,9 +17,13 @@ public sealed class SetupController(IMediator mediator, ISetupConfigurationStore
     [AllowAnonymous]
     public async Task<IActionResult> ConfigureMasterDatabase(MasterDatabaseSetupRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.ConnectionString)) return BadRequest(new { error = "A master database connection string is required." });
+        if (string.IsNullOrWhiteSpace(request.ConnectionString))
+        {
+            return BadRequest(new { error = "A master database connection string is required." });
+        }
+
         await configurationStore.SetMasterConnectionStringAsync(request.ConnectionString, cancellationToken);
-        var options = new DbContextOptionsBuilder<RemoteTicketsDbContext>().UseSqlServer(request.ConnectionString).Options;
+        DbContextOptions<RemoteTicketsDbContext> options = new DbContextOptionsBuilder<RemoteTicketsDbContext>().UseSqlServer(request.ConnectionString).Options;
         await using var dbContext = new RemoteTicketsDbContext(options);
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
         return Ok();
@@ -30,15 +34,18 @@ public sealed class SetupController(IMediator mediator, ISetupConfigurationStore
     [AllowAnonymous]
     public async Task<IActionResult> Initialize(InitializeSetupRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<InitializeSetupCommand, IdentityResultResponse>(new InitializeSetupCommand(request.Email, request.Password), cancellationToken);
-        if (!result.Succeeded) return Conflict(result);
+        IdentityResultResponse result = await mediator.RequestAsync<InitializeSetupCommand, IdentityResultResponse>(new InitializeSetupCommand(request.Email, request.Password), cancellationToken);
+        if (!result.Succeeded)
+        {
+            return Conflict(result);
+        }
 
         string? connectionString = configurationStore.GetMasterConnectionString();
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
-            var options = new DbContextOptionsBuilder<RemoteTicketsDbContext>().UseSqlServer(connectionString).Options;
+            DbContextOptions<RemoteTicketsDbContext> options = new DbContextOptionsBuilder<RemoteTicketsDbContext>().UseSqlServer(connectionString).Options;
             await using var dbContext = new RemoteTicketsDbContext(options);
-            var state = await dbContext.SystemSetup.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+            SystemSetupState? state = await dbContext.SystemSetup.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
             if (state is null)
             {
                 state = new SystemSetupState { Id = 1 };

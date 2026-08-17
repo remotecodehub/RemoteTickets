@@ -9,4 +9,5 @@ internal sealed class TenancyConfigurations : IEntityTypeConfiguration<TenantSet
         builder.Property(x => x.IsComplete).IsRequired();
     }
 
+
 }

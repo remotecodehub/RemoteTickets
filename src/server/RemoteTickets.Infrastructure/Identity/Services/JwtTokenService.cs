@@ -10,17 +10,21 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IRevokedTokenS
     /// <inheritdoc />
     public TokenResponse CreateTokens(string userId, string email, IEnumerable<string> roles, IEnumerable<Claim> claims)
     {
-        var now = DateTimeOffset.UtcNow;
-        var claimSet = claims.ToArray();
-        var access = CreateToken(userId, email, roles, claimSet, JwtTokenTypes.Access, now, _options.AccessTokenLifetime);
-        var refresh = CreateToken(userId, email, roles, claimSet, JwtTokenTypes.Refresh, now, _options.RefreshTokenLifetime);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        Claim[] claimSet = claims.ToArray();
+        JwtSecurityToken access = CreateToken(userId, email, roles, claimSet, JwtTokenTypes.Access, now, _options.AccessTokenLifetime);
+        JwtSecurityToken refresh = CreateToken(userId, email, roles, claimSet, JwtTokenTypes.Refresh, now, _options.RefreshTokenLifetime);
         return new TokenResponse("Bearer", new JwtSecurityTokenHandler().WriteToken(access), (int)_options.AccessTokenLifetime.TotalSeconds, new JwtSecurityTokenHandler().WriteToken(refresh));
     }
 
     /// <inheritdoc />
     public ClaimsPrincipal? ValidateToken(string token, bool validateLifetime = true)
     {
-        if (string.IsNullOrWhiteSpace(token)) return null;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
         var parameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -34,8 +38,12 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IRevokedTokenS
         };
         try
         {
-            var principal = new JwtSecurityTokenHandler().ValidateToken(token, parameters, out var validatedToken);
-            if (!string.IsNullOrWhiteSpace(validatedToken.Id) && revokedTokens.IsRevoked(validatedToken.Id)) return null;
+            ClaimsPrincipal principal = new JwtSecurityTokenHandler().ValidateToken(token, parameters, out SecurityToken? validatedToken);
+            if (!string.IsNullOrWhiteSpace(validatedToken.Id) && revokedTokens.IsRevoked(validatedToken.Id))
+            {
+                return null;
+            }
+
             return principal;
         }
         catch (SecurityTokenException) { return null; }
@@ -54,7 +62,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IRevokedTokenS
     {
         try
         {
-            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+            JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
             return jwt.ValidTo == DateTime.MinValue ? null : new DateTimeOffset(jwt.ValidTo, TimeSpan.Zero);
         }
         catch (ArgumentException) { return null; }
@@ -77,7 +85,11 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IRevokedTokenS
     private SymmetricSecurityKey CreateSecurityKey()
     {
         byte[] bytes = Encoding.UTF8.GetBytes(_options.SecretKey);
-        if (bytes.Length < 32) throw new InvalidOperationException("Authentication:Jwt:SecretKey must contain at least 256 bits.");
+        if (bytes.Length < 32)
+        {
+            throw new InvalidOperationException("Authentication:Jwt:SecretKey must contain at least 256 bits.");
+        }
+
         return new SymmetricSecurityKey(bytes);
     }
 }
@@ -89,14 +101,25 @@ public sealed class RevokedTokenStore : IRevokedTokenStore
     /// <inheritdoc />
     public bool IsRevoked(string tokenId)
     {
-        if (!_tokens.TryGetValue(tokenId, out var expiresAt)) return false;
-        if (expiresAt > DateTimeOffset.UtcNow) return true;
+        if (!_tokens.TryGetValue(tokenId, out DateTimeOffset expiresAt))
+        {
+            return false;
+        }
+
+        if (expiresAt > DateTimeOffset.UtcNow)
+        {
+            return true;
+        }
+
         _tokens.TryRemove(tokenId, out _);
         return false;
     }
     /// <inheritdoc />
     public void Revoke(string tokenId, DateTimeOffset expiresAt)
     {
-        if (expiresAt > DateTimeOffset.UtcNow) _tokens[tokenId] = expiresAt;
+        if (expiresAt > DateTimeOffset.UtcNow)
+        {
+            _tokens[tokenId] = expiresAt;
+        }
     }
 }

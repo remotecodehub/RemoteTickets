@@ -9,9 +9,9 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
     public async Task InvokeAsync(HttpContext context)
     {
         if (IsInfrastructurePath(context.Request.Path)) { await next(context); return; }
-        var endpoint = context.GetEndpoint();
+        Endpoint? endpoint = context.GetEndpoint();
         bool anonymous = endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
-        var setupState = await masterDb.SystemSetup.AsNoTracking().SingleOrDefaultAsync(x => x.Id == 1, context.RequestAborted);
+        SystemSetupState? setupState = await masterDb.SystemSetup.AsNoTracking().SingleOrDefaultAsync(x => x.Id == 1, context.RequestAborted);
         bool systemSetupRequired = setupState is null || !setupState.IsComplete;
         if (systemSetupRequired)
         {
@@ -27,7 +27,15 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
         }
         if (!context.Request.RouteValues.TryGetValue("tenantId", out object? value) || string.IsNullOrWhiteSpace(value?.ToString()))
         {
-            if (anonymous) await next(context); else await RejectOrRedirectAsync(context, "/setup", StatusCodes.Status503ServiceUnavailable);
+            if (anonymous)
+            {
+                await next(context);
+            }
+            else
+            {
+                await RejectOrRedirectAsync(context, "/setup", StatusCodes.Status503ServiceUnavailable);
+            }
+
             return;
         }
         string tenantId = value.ToString()!;
@@ -37,7 +45,7 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
             await next(context);
             return;
         }
-        var tenant = await tenants.GetAsync(tenantId, context.RequestAborted);
+        TenantResponse? tenant = await tenants.GetAsync(tenantId, context.RequestAborted);
         if (tenant is null || !tenant.IsActive) { await RejectOrRedirectAsync(context, "/not-found", StatusCodes.Status404NotFound); return; }
         if (anonymous)
         {
@@ -61,7 +69,11 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
     private static bool IsTenantSetupEndpoint(HttpContext context)
     {
         string? tenantId = context.Request.RouteValues.TryGetValue("tenantId", out object? value) ? value?.ToString() : null;
-        if (string.IsNullOrWhiteSpace(tenantId)) return false;
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            return false;
+        }
+
         string? path = context.Request.Path.Value;
         return string.Equals(path, $"/{tenantId}/setup", StringComparison.OrdinalIgnoreCase) || string.Equals(path, $"/api/v1/{tenantId}/setup", StringComparison.OrdinalIgnoreCase) || string.Equals(path, $"/api/v1/{tenantId}/setup/complete", StringComparison.OrdinalIgnoreCase);
     }

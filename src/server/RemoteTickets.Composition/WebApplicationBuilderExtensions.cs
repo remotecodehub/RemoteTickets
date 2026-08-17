@@ -10,8 +10,8 @@ public static class WebApplicationBuilderExtensions
         /// <exception cref="InvalidOperationException">Thrown when required JWT configuration is missing or its secret key is too short.</exception>
         public async Task RunRemoteTicketsAsync<T>() where T : IComponent
         {
-            var services = builder.Services;
-            var configuration = builder.Configuration;
+            IServiceCollection services = builder.Services;
+            ConfigurationManager configuration = builder.Configuration;
 
             services.AddRazorComponents()
                 .AddInteractiveServerComponents();
@@ -60,8 +60,12 @@ public static class WebApplicationBuilderExtensions
 
             _ = services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
             {
-                var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? throw new InvalidOperationException("JWT configuration is missing.");
-                if (Encoding.UTF8.GetByteCount(jwt.SecretKey) < 32) throw new InvalidOperationException("Authentication:Jwt:SecretKey must contain at least 256 bits.");
+                JwtOptions jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? throw new InvalidOperationException("JWT configuration is missing.");
+                if (Encoding.UTF8.GetByteCount(jwt.SecretKey) < 32)
+                {
+                    throw new InvalidOperationException("Authentication:Jwt:SecretKey must contain at least 256 bits.");
+                }
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,

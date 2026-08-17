@@ -12,10 +12,10 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Register_should_return_identity_errors_for_duplicate_email()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         (await fixture.Service.RegisterAsync("user@example.com", "Password1!", CancellationToken.None)).Succeeded.Should().BeTrue();
 
-        var result = await fixture.Service.RegisterAsync("user@example.com", "Password1!", CancellationToken.None);
+        IdentityResultResponse result = await fixture.Service.RegisterAsync("user@example.com", "Password1!", CancellationToken.None);
 
         result.Succeeded.Should().BeFalse();
         result.Errors.Should().NotBeEmpty();
@@ -28,7 +28,7 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Login_should_reject_bad_password_and_unconfirmed_user()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.RegisterAsync("user@example.com", "Password1!", CancellationToken.None);
 
         (await fixture.Service.LoginAsync("user@example.com", "WrongPassword1!", null, null, CancellationToken.None)).Should().BeNull();
@@ -42,12 +42,12 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Login_should_reject_invalid_two_factor_code_and_recovery_code()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
-        var user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
+        User? user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
         user.Should().NotBeNull();
 
-        var twoFactorSetup = await fixture.Service.ConfigureTwoFactorAsync(
+        TwoFactorResponse? twoFactorSetup = await fixture.Service.ConfigureTwoFactorAsync(
             user!.Id,
             null,
             null,
@@ -62,7 +62,7 @@ public sealed class IdentityBranchTests
         string setupCode = GenerateTotp(twoFactorSetup.SharedKey!);
         setupCode.Should().NotBeNullOrWhiteSpace();
 
-        var configured = await fixture.Service.ConfigureTwoFactorAsync(
+        TwoFactorResponse? configured = await fixture.Service.ConfigureTwoFactorAsync(
             user.Id,
             true,
             setupCode,
@@ -84,11 +84,11 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Refresh_should_reject_access_tokens_empty_subjects_and_unknown_users()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
-        var user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
+        User? user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
         user.Should().NotBeNull();
-        var access = await fixture.Service.LoginAsync("admin@example.com", "Password1!", null, null, CancellationToken.None);
+        TokenResponse? access = await fixture.Service.LoginAsync("admin@example.com", "Password1!", null, null, CancellationToken.None);
         access.Should().NotBeNull();
         (await fixture.Service.RefreshAsync(access!.AccessToken, CancellationToken.None)).Should().BeNull();
 
@@ -106,7 +106,7 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Confirm_email_should_support_changed_email_and_reject_invalid_code()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.RegisterAsync("old@example.com", "Password1!", CancellationToken.None);
         string link = fixture.EmailSender.ConfirmationLinks.Single();
         var query = new Uri("https://localhost" + link).Query.TrimStart('?')
@@ -114,7 +114,7 @@ public sealed class IdentityBranchTests
             .Select(part => part.Split('=', 2))
             .ToDictionary(part => part[0], part => Uri.UnescapeDataString(part[1]));
 
-        var user = await fixture.UserManager.FindByIdAsync(query["userId"]);
+        User? user = await fixture.UserManager.FindByIdAsync(query["userId"]);
         user.Should().NotBeNull();
         string changeCode = await fixture.UserManager.GenerateChangeEmailTokenAsync(user!, "new@example.com");
         (await fixture.Service.ConfirmEmailAsync(user!.Id, changeCode, "new@example.com", CancellationToken.None)).Should().BeTrue();
@@ -128,7 +128,7 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Forgot_password_should_not_send_for_a_user_without_password()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         var user = new User("external@example.com") { Email = "external@example.com", EmailConfirmed = true };
         (await fixture.UserManager.CreateAsync(user)).Succeeded.Should().BeTrue();
 
@@ -143,10 +143,10 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Reset_password_should_report_invalid_token_for_existing_user()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
 
-        var result = await fixture.Service.ResetPasswordAsync("admin@example.com", "invalid", "Password2!", CancellationToken.None);
+        IdentityResultResponse result = await fixture.Service.ResetPasswordAsync("admin@example.com", "invalid", "Password2!", CancellationToken.None);
 
         result.Succeeded.Should().BeFalse();
         result.Errors.Should().NotBeEmpty();
@@ -159,9 +159,9 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Update_info_should_cover_missing_user_wrong_password_and_no_changes()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
-        var user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
+        User? user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
         user.Should().NotBeNull();
 
         (await fixture.Service.UpdateInfoAsync("missing", null, null, "Password1!", CancellationToken.None)).Succeeded.Should().BeFalse();
@@ -176,14 +176,14 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Setup_should_accept_an_existing_administrator_role_and_reject_invalid_password()
     {
-        await using var fixture = await IdentityFixture.CreateAsync();
+        await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         var role = new Role("Administrator");
         (await fixture.RoleManager.CreateAsync(role)).Succeeded.Should().BeTrue();
 
-        var invalid = await fixture.Service.InitializeSetupAsync("admin@example.com", "weak", CancellationToken.None);
+        IdentityResultResponse invalid = await fixture.Service.InitializeSetupAsync("admin@example.com", "weak", CancellationToken.None);
         invalid.Succeeded.Should().BeFalse();
 
-        var valid = await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
+        IdentityResultResponse valid = await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
         valid.Succeeded.Should().BeTrue();
     }
 
@@ -194,7 +194,7 @@ public sealed class IdentityBranchTests
     [Fact]
     public async Task Logging_email_sender_should_complete_both_messages()
     {
-        using var provider = new ServiceCollection().AddLogging().BuildServiceProvider();
+        using ServiceProvider provider = new ServiceCollection().AddLogging().BuildServiceProvider();
         var sender = new LoggingIdentityEmailSender(provider.GetRequiredService<ILogger<LoggingIdentityEmailSender>>());
 
         await sender.SendConfirmationAsync("user@example.com", "/confirm", CancellationToken.None);

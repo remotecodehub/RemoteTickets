@@ -9,7 +9,7 @@ public sealed class TenantManagementService(
     /// <inheritdoc />
     public async Task<TenantResponse?> GetAsync(string tenantId, CancellationToken cancellationToken)
     {
-        var tenant = await catalog.Tenants.AsNoTracking().SingleOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
+        Tenant? tenant = await catalog.Tenants.AsNoTracking().SingleOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
         return tenant is null ? null : Map(tenant);
     }
 
@@ -38,7 +38,7 @@ public sealed class TenantManagementService(
         catalog.Tenants.Add(tenant);
         await catalog.SaveChangesAsync(cancellationToken);
 
-        var adminResult = await identityService.CreateTenantAdminAsync(request.Id, request.AdminEmail, request.AdminPassword, cancellationToken);
+        IdentityResultResponse adminResult = await identityService.CreateTenantAdminAsync(request.Id, request.AdminEmail, request.AdminPassword, cancellationToken);
         if (!adminResult.Succeeded)
         {
             catalog.Tenants.Remove(tenant);
@@ -53,20 +53,20 @@ public sealed class TenantManagementService(
     /// <inheritdoc />
     public async Task<TenantSetupStatusResponse> GetSetupStatusAsync(string tenantId, CancellationToken cancellationToken)
     {
-        var tenant = await GetTenantEntityAsync(tenantId, cancellationToken);
-        await using var context = CreateSetupContext(tenant.ConnectionString);
+        Tenant tenant = await GetTenantEntityAsync(tenantId, cancellationToken);
+        await using TenantSetupDbContext context = CreateSetupContext(tenant.ConnectionString);
         await context.Database.EnsureCreatedAsync(cancellationToken);
-        var state = await context.SetupStates.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+        TenantSetupState? state = await context.SetupStates.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
         return new TenantSetupStatusResponse(state is null || !state.IsComplete, state?.IsComplete == true);
     }
 
     /// <inheritdoc />
     public async Task<TenantSetupStatusResponse> CompleteSetupAsync(string tenantId, CancellationToken cancellationToken)
     {
-        var tenant = await GetTenantEntityAsync(tenantId, cancellationToken);
-        await using var context = CreateSetupContext(tenant.ConnectionString);
+        Tenant tenant = await GetTenantEntityAsync(tenantId, cancellationToken);
+        await using TenantSetupDbContext context = CreateSetupContext(tenant.ConnectionString);
         await context.Database.EnsureCreatedAsync(cancellationToken);
-        var state = await context.SetupStates.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+        TenantSetupState? state = await context.SetupStates.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
         if (state is null)
         {
             state = new TenantSetupState { Id = 1 };
@@ -90,7 +90,7 @@ public sealed class TenantManagementService(
 
     private static TenantSetupDbContext CreateSetupContext(string connectionString)
     {
-        var options = new DbContextOptionsBuilder<TenantSetupDbContext>()
+        DbContextOptions<TenantSetupDbContext> options = new DbContextOptionsBuilder<TenantSetupDbContext>()
             .UseSqlServer(connectionString)
             .Options;
         return new TenantSetupDbContext(options);
@@ -103,7 +103,7 @@ public sealed class TenantManagementService(
         await using var connection = new SqlConnection(builder.ConnectionString);
         await connection.OpenAsync(cancellationToken);
         string escaped = $"[{databaseName.Replace("]", "]]", StringComparison.Ordinal)}]";
-        await using var command = connection.CreateCommand();
+        await using SqlCommand command = connection.CreateCommand();
         command.CommandText = $"IF DB_ID(@databaseName) IS NULL CREATE DATABASE {escaped};";
         command.Parameters.AddWithValue("@databaseName", databaseName);
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -111,7 +111,7 @@ public sealed class TenantManagementService(
 
     private static async Task InitializeTenantDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
-        await using var context = CreateSetupContext(connectionString);
+        await using TenantSetupDbContext context = CreateSetupContext(connectionString);
         // The repository currently has no EF migration history. EnsureCreated creates the foundation schema;
         // the same tenant connection is used by the future migration runner when migrations are introduced.
         await context.Database.MigrateAsync(cancellationToken);

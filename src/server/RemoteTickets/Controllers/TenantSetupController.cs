@@ -22,7 +22,7 @@ public sealed class TenantSetupController(ITenantManagementService tenants) : Co
     [Authorize(Policy = TenantPolicies.TenantAdmin)]
     public async Task<IActionResult> Complete(string tenantId, CancellationToken cancellationToken)
     {
-        var result = await tenants.CompleteSetupAsync(tenantId, cancellationToken);
+        TenantSetupStatusResponse result = await tenants.CompleteSetupAsync(tenantId, cancellationToken);
         return Ok(result);
     }
 }

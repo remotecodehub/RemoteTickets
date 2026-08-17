@@ -16,7 +16,7 @@ public sealed class TenantController(ITenantManagementService tenants) : Control
     {
         try
         {
-            var tenant = await tenants.CreateAsync(request, cancellationToken);
+            TenantResponse tenant = await tenants.CreateAsync(request, cancellationToken);
             return Created($"/api/v1/{tenant.Id}/setup", tenant);
         }
         catch (ArgumentException exception)
@@ -36,7 +36,7 @@ public sealed class TenantController(ITenantManagementService tenants) : Control
     [HttpGet("{tenantId}")]
     public async Task<IActionResult> Get(string tenantId, CancellationToken cancellationToken)
     {
-        var tenant = await tenants.GetAsync(tenantId, cancellationToken);
+        TenantResponse? tenant = await tenants.GetAsync(tenantId, cancellationToken);
         return tenant is null ? NotFound() : Ok(tenant);
     }
 }

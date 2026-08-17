@@ -11,7 +11,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromRoute] string tenantId, RegisterRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<RegisterCommand, IdentityResultResponse>(new RegisterCommand(request.Email, request.Password), cancellationToken);
+        IdentityResultResponse result = await mediator.RequestAsync<RegisterCommand, IdentityResultResponse>(new RegisterCommand(request.Email, request.Password), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
     /// <summary>Authenticates a user against the requested tenant.</summary>
@@ -19,7 +19,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromRoute] string tenantId, LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<LoginCommand, Response<TokenResponse>>(new LoginCommand(request.Email, request.Password, request.TwoFactorCode, request.TwoFactorRecoveryCode, tenantId), cancellationToken);
+        Response<TokenResponse> result = await mediator.RequestAsync<LoginCommand, Response<TokenResponse>>(new LoginCommand(request.Email, request.Password, request.TwoFactorCode, request.TwoFactorRecoveryCode, tenantId), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : Unauthorized(result);
     }
     /// <summary>Exchanges a refresh token for a new token pair in the requested tenant context.</summary>
@@ -27,7 +27,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromRoute] string tenantId, RefreshRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<RefreshTokenCommand, Response<TokenResponse>>(new RefreshTokenCommand(request.RefreshToken, tenantId), cancellationToken);
+        Response<TokenResponse> result = await mediator.RequestAsync<RefreshTokenCommand, Response<TokenResponse>>(new RefreshTokenCommand(request.RefreshToken, tenantId), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : Unauthorized(result);
     }
     /// <summary>Revokes the access token supplied by the authenticated caller.</summary>
@@ -36,7 +36,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Revoke(CancellationToken cancellationToken)
     {
         string accessToken = Request.Headers.Authorization.ToString().Replace("Bearer ", string.Empty, StringComparison.OrdinalIgnoreCase);
-        var result = await mediator.RequestAsync<RevokeTokenCommand, Response<bool>>(new RevokeTokenCommand(accessToken), cancellationToken);
+        Response<bool> result = await mediator.RequestAsync<RevokeTokenCommand, Response<bool>>(new RevokeTokenCommand(accessToken), cancellationToken);
         return result.Data == true ? Ok() : Unauthorized(result);
     }
     /// <summary>Confirms a user's email address.</summary>
@@ -44,7 +44,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string code, [FromQuery] string? changedEmail, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<ConfirmEmailCommand, Response<bool>>(new ConfirmEmailCommand(userId, code, changedEmail), cancellationToken);
+        Response<bool> result = await mediator.RequestAsync<ConfirmEmailCommand, Response<bool>>(new ConfirmEmailCommand(userId, code, changedEmail), cancellationToken);
         return result.Data == true ? Ok("Thank you for confirming your email.") : BadRequest(result);
     }
     /// <summary>Resends a user's email confirmation link.</summary>
@@ -52,7 +52,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> ResendConfirmationEmail(EmailRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<ResendConfirmationEmailCommand, IdentityResultResponse>(new ResendConfirmationEmailCommand(request.Email), cancellationToken);
+        IdentityResultResponse result = await mediator.RequestAsync<ResendConfirmationEmailCommand, IdentityResultResponse>(new ResendConfirmationEmailCommand(request.Email), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
     /// <summary>Starts password recovery for an email address.</summary>
@@ -60,7 +60,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> ForgotPassword(EmailRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<ForgotPasswordCommand, IdentityResultResponse>(new ForgotPasswordCommand(request.Email), cancellationToken);
+        IdentityResultResponse result = await mediator.RequestAsync<ForgotPasswordCommand, IdentityResultResponse>(new ForgotPasswordCommand(request.Email), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
     /// <summary>Resets a user's password using a reset token.</summary>
@@ -68,7 +68,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken cancellationToken)
     {
-        var result = await mediator.RequestAsync<ResetPasswordCommand, IdentityResultResponse>(new ResetPasswordCommand(request.Email, request.ResetCode, request.NewPassword), cancellationToken);
+        IdentityResultResponse result = await mediator.RequestAsync<ResetPasswordCommand, IdentityResultResponse>(new ResetPasswordCommand(request.Email, request.ResetCode, request.NewPassword), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
     /// <summary>Gets identity information for the authenticated user.</summary>
@@ -77,8 +77,12 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetInfo(CancellationToken cancellationToken)
     {
         string? userId = GetUserId();
-        if (userId is null) return Unauthorized();
-        var result = await mediator.RequestAsync<GetIdentityInfoQuery, Response<IdentityInfoResponse>>(new GetIdentityInfoQuery(userId), cancellationToken);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        Response<IdentityInfoResponse> result = await mediator.RequestAsync<GetIdentityInfoQuery, Response<IdentityInfoResponse>>(new GetIdentityInfoQuery(userId), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : NotFound(result);
     }
     /// <summary>Updates identity information for the authenticated user.</summary>
@@ -87,8 +91,12 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> UpdateInfo(InfoRequest request, CancellationToken cancellationToken)
     {
         string? userId = GetUserId();
-        if (userId is null) return Unauthorized();
-        var result = await mediator.RequestAsync<UpdateIdentityInfoCommand, IdentityResultResponse>(new UpdateIdentityInfoCommand(userId, request.NewEmail, request.NewPassword, request.OldPassword), cancellationToken);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        IdentityResultResponse result = await mediator.RequestAsync<UpdateIdentityInfoCommand, IdentityResultResponse>(new UpdateIdentityInfoCommand(userId, request.NewEmail, request.NewPassword, request.OldPassword), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
     }
     /// <summary>Configures authenticator-based two-factor authentication for the authenticated user.</summary>
@@ -97,8 +105,12 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> ConfigureTwoFactor(TwoFactorRequest request, CancellationToken cancellationToken)
     {
         string? userId = GetUserId();
-        if (userId is null) return Unauthorized();
-        var result = await mediator.RequestAsync<ConfigureTwoFactorCommand, Response<TwoFactorResponse>>(new ConfigureTwoFactorCommand(userId, request.Enable, request.TwoFactorCode, request.ResetRecoveryCodes, request.ResetSharedKey, request.ForgetMachine), cancellationToken);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        Response<TwoFactorResponse> result = await mediator.RequestAsync<ConfigureTwoFactorCommand, Response<TwoFactorResponse>>(new ConfigureTwoFactorCommand(userId, request.Enable, request.TwoFactorCode, request.ResetRecoveryCodes, request.ResetSharedKey, request.ForgetMachine), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : BadRequest(result);
     }
     private string? GetUserId() => User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? User.FindFirstValue(ClaimTypes.NameIdentifier);

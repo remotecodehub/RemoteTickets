@@ -8,7 +8,7 @@ public sealed class PersistenceTests
     [Fact]
     public async Task Soft_deleted_users_should_be_hidden_by_query_filter()
     {
-        await using var fixture = await CreateContextAsync();
+        await using ContextFixture fixture = await CreateContextAsync();
         var user = new User("deleted@example.com") { Email = "deleted@example.com", EmailConfirmed = true };
         fixture.Context.Users.Add(user);
         fixture.Context.SaveChanges();
@@ -27,7 +27,7 @@ public sealed class PersistenceTests
     [Fact]
     public async Task Async_soft_delete_should_apply_the_same_behavior()
     {
-        await using var fixture = await CreateContextAsync();
+        await using ContextFixture fixture = await CreateContextAsync();
         var user = new User("async@example.com") { Email = "async@example.com", EmailConfirmed = true };
         fixture.Context.Users.Add(user);
         await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -56,7 +56,7 @@ public sealed class PersistenceTests
 
     private static async Task<ContextFixture> CreateContextAsync()
     {
-        var options = new DbContextOptionsBuilder<RemoteTicketsDbContext>()
+        DbContextOptions<RemoteTicketsDbContext> options = new DbContextOptionsBuilder<RemoteTicketsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
             .Options;
         var context = new RemoteTicketsDbContext(options);
