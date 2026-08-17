@@ -91,7 +91,7 @@ public sealed class RemoteTicketsDbContext(DbContextOptions<RemoteTicketsDbConte
 
         foreach (EntityEntry<IEntityAuditable> entry in ChangeTracker.Entries<IEntityAuditable>().ToArray())
         {
-            if (entry.Entity is EntityAuditRecord || entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted))
+            if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted))
             {
                 continue;
             }
