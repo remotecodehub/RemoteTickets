@@ -19,6 +19,24 @@ public interface IIdentityService
     /// <returns>The token pair, or <see langword="null"/> when authentication fails.</returns>
     Task<TokenResponse?> LoginAsync(string email, string password, string? twoFactorCode, string? twoFactorRecoveryCode, CancellationToken cancellationToken);
 
+    /// <summary>Authenticates a user against a tenant route and rejects users assigned to another tenant.</summary>
+    /// <param name="tenantId">The tenant identifier supplied by the route.</param>
+    /// <param name="email">The user's email address.</param>
+    /// <param name="password">The user's password.</param>
+    /// <param name="twoFactorCode">The authenticator code, when two-factor authentication is enabled.</param>
+    /// <param name="twoFactorRecoveryCode">The recovery code, when a recovery code is used instead of an authenticator code.</param>
+    /// <param name="cancellationToken">The token used to cancel the operation.</param>
+    /// <returns>The token pair, or <see langword="null"/> when the credentials or tenant assignment are invalid.</returns>
+    Task<TokenResponse?> LoginAsync(string tenantId, string email, string password, string? twoFactorCode, string? twoFactorRecoveryCode, CancellationToken cancellationToken);
+
+    /// <summary>Creates the first administrator account for a tenant in the central identity store.</summary>
+    /// <param name="tenantId">The tenant identifier assigned to the user.</param>
+    /// <param name="email">The administrator email address.</param>
+    /// <param name="password">The administrator password.</param>
+    /// <param name="cancellationToken">The token used to cancel the operation.</param>
+    /// <returns>The user creation result.</returns>
+    Task<IdentityResultResponse> CreateTenantAdminAsync(string tenantId, string email, string password, CancellationToken cancellationToken);
+
     /// <summary>Exchanges a valid refresh token for a new token pair.</summary>
     /// <param name="refreshToken">The refresh token to exchange.</param>
     /// <param name="cancellationToken">The token used to cancel the operation.</param>
@@ -79,8 +97,8 @@ public interface IIdentityService
     /// <param name="enable">Whether to enable or disable two-factor authentication.</param>
     /// <param name="twoFactorCode">The authenticator code used to validate enabling two-factor authentication.</param>
     /// <param name="resetRecoveryCodes">Whether recovery codes should be regenerated.</param>
-    /// <param name="resetSharedKey">Whether the authenticator shared key should be regenerated.</param>
-    /// <param name="forgetMachine">Whether the current machine should be forgotten.</param>
+    /// <param name="resetSharedKey">Whether the shared authenticator key should be regenerated.</param>
+    /// <param name="forgetMachine">Whether the remembered machine state should be cleared.</param>
     /// <param name="cancellationToken">The token used to cancel the operation.</param>
     /// <returns>The current configuration, or <see langword="null"/> when the operation cannot be completed.</returns>
     Task<TwoFactorResponse?> ConfigureTwoFactorAsync(string userId, bool? enable, string? twoFactorCode, bool resetRecoveryCodes, bool resetSharedKey, bool forgetMachine, CancellationToken cancellationToken);
