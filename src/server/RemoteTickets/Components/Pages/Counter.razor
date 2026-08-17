@@ -1,19 +1,15 @@
-﻿@page "/counter"
+@page "/{tenantId}/counter"
 @rendermode InteractiveServer
 
 <PageTitle>Counter</PageTitle>
 
 <h1>Counter</h1>
-
+<p>Tenant: @tenantId</p>
 <p role="status">Current count: @currentCount</p>
-
 <button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
 
 @code {
-    private int currentCount = 0;
-
-    private void IncrementCount()
-    {
-        currentCount++;
-    }
+    [Parameter] public string tenantId { get; set; } = string.Empty;
+    private int currentCount;
+    private void IncrementCount() => currentCount++;
 }
