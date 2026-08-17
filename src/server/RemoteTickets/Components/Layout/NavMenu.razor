@@ -5,14 +5,18 @@
     <MudDivider Class="mb-2" />
 
     <MudNavMenu Color="Color.Primary">
-        <MudNavLink Href="@TenantHref(string.Empty)" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-        <MudNavLink Href="@TenantHref("counter")" Icon="@Icons.Material.Filled.AddCircle">Counter</MudNavLink>
-        <MudNavLink Href="@TenantHref("weather")" Icon="@Icons.Material.Filled.WbSunny">Weather</MudNavLink>
+        <MudNavLink Href="@HomeHref" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+        <MudNavLink Href="@CounterHref" Icon="@Icons.Material.Filled.AddCircle">Counter</MudNavLink>
+        <MudNavLink Href="@WeatherHref" Icon="@Icons.Material.Filled.WbSunny">Weather</MudNavLink>
         <MudNavLink Href="/setup" Icon="@Icons.Material.Filled.Settings">System setup</MudNavLink>
     </MudNavMenu>
 </MudStack>
 
 @code {
+    private string HomeHref => TenantHref(string.Empty);
+    private string CounterHref => TenantHref("counter");
+    private string WeatherHref => TenantHref("weather");
+
     private string TenantHref(string suffix)
     {
         string relativePath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
