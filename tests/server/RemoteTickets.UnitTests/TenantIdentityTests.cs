@@ -11,10 +11,8 @@ public sealed class TenantIdentityTests
         await fixture.Service.InitializeSetupAsync("sysadmin@example.com", "Password1!", CancellationToken.None);
         IdentityResultResponse created = await fixture.Service.CreateTenantAdminAsync("tenant-a", "admin-a@example.com", "Password1!", CancellationToken.None);
         created.Succeeded.Should().BeTrue();
-
         TokenResponse? valid = await fixture.Service.LoginAsync("tenant-a", "admin-a@example.com", "Password1!", null, null, CancellationToken.None);
         valid.Should().NotBeNull();
-
         TokenResponse? wrongTenant = await fixture.Service.LoginAsync("tenant-b", "admin-a@example.com", "Password1!", null, null, CancellationToken.None);
         wrongTenant.Should().BeNull();
     }
@@ -26,7 +24,6 @@ public sealed class TenantIdentityTests
         await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.InitializeSetupAsync("sysadmin@example.com", "Password1!", CancellationToken.None);
         await fixture.Service.CreateTenantAdminAsync("tenant-a", "admin-a@example.com", "Password1!", CancellationToken.None);
-
         TokenResponse? tokens = await fixture.Service.LoginAsync("tenant-b", "sysadmin@example.com", "Password1!", null, null, CancellationToken.None);
         tokens.Should().NotBeNull();
         fixture.TokenService.ValidateToken(tokens!.AccessToken)!.IsInRole(TenantRoles.SysAdmin).Should().BeTrue();
@@ -41,10 +38,8 @@ public sealed class TenantIdentityTests
         await fixture.Service.CreateTenantAdminAsync("tenant-a", "admin-a@example.com", "Password1!", CancellationToken.None);
         TokenResponse? tokens = await fixture.Service.LoginAsync("tenant-a", "admin-a@example.com", "Password1!", null, null, CancellationToken.None);
         tokens.Should().NotBeNull();
-
         TokenResponse? invalid = await fixture.Service.RefreshAsync("tenant-b", tokens!.RefreshToken, CancellationToken.None);
         invalid.Should().BeNull();
-
         TokenResponse? refreshed = await fixture.Service.RefreshAsync("tenant-a", tokens.RefreshToken, CancellationToken.None);
         refreshed.Should().NotBeNull();
         fixture.TokenService.ValidateToken(refreshed!.AccessToken)!.FindFirst(TenantClaimTypes.TenantId)!.Value.Should().Be("tenant-a");
@@ -56,8 +51,7 @@ public sealed class TenantIdentityTests
     {
         await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         User user = new("operator@example.com") { Email = "operator@example.com", EmailConfirmed = true };
-        (await fixture.UserManager.CreateAsync(user, "Password1!", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-
+        (await fixture.UserManager.CreateAsync(user, "Password1!" )).Succeeded.Should().BeTrue();
         (await fixture.Service.LoginAsync("tenant-a", "operator@example.com", "Password1!", null, null, TestContext.Current.CancellationToken)).Should().BeNull();
         (await fixture.Service.CreateTenantAdminAsync(string.Empty, "admin@example.com", "Password1!", TestContext.Current.CancellationToken)).Succeeded.Should().BeFalse();
     }
@@ -69,7 +63,6 @@ public sealed class TenantIdentityTests
         await using IdentityFixture fixture = await IdentityFixture.CreateAsync();
         (await fixture.Service.CreateTenantAdminAsync("tenant-a", "admin@example.com", "Password1!", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         IdentityResultResponse duplicate = await fixture.Service.CreateTenantAdminAsync("tenant-b", "admin@example.com", "Password1!", TestContext.Current.CancellationToken);
-
         duplicate.Succeeded.Should().BeFalse();
     }
 }
