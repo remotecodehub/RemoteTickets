@@ -1,11 +1,22 @@
-﻿<MudStack Class="pa-4" Spacing="1">
+﻿@inject NavigationManager Navigation
+
+<MudStack Class="pa-4" Spacing="1">
     <MudText Typo="Typo.h6">RemoteTickets</MudText>
     <MudDivider Class="mb-2" />
 
     <MudNavMenu Color="Color.Primary">
-        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-        <MudNavLink Href="/counter" Icon="@Icons.Material.Filled.AddCircle">Counter</MudNavLink>
-        <MudNavLink Href="/weather" Icon="@Icons.Material.Filled.WbSunny">Weather</MudNavLink>
-        <MudNavLink Href="/setup" Icon="@Icons.Material.Filled.Settings">Setup</MudNavLink>
+        <MudNavLink Href="@TenantHref("")" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+        <MudNavLink Href="@TenantHref("counter")" Icon="@Icons.Material.Filled.AddCircle">Counter</MudNavLink>
+        <MudNavLink Href="@TenantHref("weather")" Icon="@Icons.Material.Filled.WbSunny">Weather</MudNavLink>
+        <MudNavLink Href="/setup" Icon="@Icons.Material.Filled.Settings">System setup</MudNavLink>
     </MudNavMenu>
 </MudStack>
+
+@code {
+    private string TenantHref(string suffix)
+    {
+        string relativePath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+        string tenantId = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+        return string.IsNullOrWhiteSpace(tenantId) ? "/" : $"/{tenantId}/{suffix}".TrimEnd('/');
+    }
+}
