@@ -40,5 +40,8 @@ public sealed class IdentityHandlerTests
         public Task<TwoFactorResponse?> ConfigureTwoFactorAsync(string userId, bool? enable, string? twoFactorCode, bool resetRecoveryCodes, bool resetSharedKey, bool forgetMachine, CancellationToken cancellationToken) => Task.FromResult<TwoFactorResponse?>(new(null, 0, null, false, false));
         public Task<SetupStatusResponse> GetSetupStatusAsync(CancellationToken cancellationToken) => Task.FromResult(new SetupStatusResponse(false, true));
         public Task<IdentityResultResponse> InitializeSetupAsync(string email, string password, CancellationToken cancellationToken) => Task.FromResult(IdentityResultResponse.Success());
+        public Task<TokenResponse?> LoginAsync(string tenantId, string email, string password, string? twoFactorCode, string? twoFactorRecoveryCode, CancellationToken cancellationToken) => Task.FromResult<TokenResponse?>(new("Bearer", "access", 900, "refresh"));
+        public Task<IdentityResultResponse> CreateTenantAdminAsync(string tenantId, string email, string password, CancellationToken cancellationToken) => Task.FromResult(IdentityResultResponse.Success());
+        public Task<TokenResponse?> RefreshAsync(string tenantId, string refreshToken, CancellationToken cancellationToken) => Task.FromResult<TokenResponse?>(new("Bearer", "access", 900, "refresh"));
     }
 }

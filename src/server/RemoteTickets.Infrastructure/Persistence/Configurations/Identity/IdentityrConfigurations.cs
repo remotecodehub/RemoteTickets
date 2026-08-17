@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace RemoteTickets.Infrastructure.Persistence.Configurations.Identity;
 
 internal sealed class IdentityrConfigurations : IEntityTypeConfiguration<User>, IEntityTypeConfiguration<Role>

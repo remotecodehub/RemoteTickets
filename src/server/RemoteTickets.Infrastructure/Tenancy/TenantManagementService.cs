@@ -1,7 +1,3 @@
-using Microsoft.Data.SqlClient;
-using RemoteTickets.Application.Common.Tenancy;
-using RemoteTickets.Infrastructure.Tenancy.Models;
-
 namespace RemoteTickets.Infrastructure.Tenancy;
 
 /// <summary>Implements tenant catalog, database provisioning, and tenant setup operations.</summary>

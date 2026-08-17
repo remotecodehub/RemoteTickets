@@ -1,23 +1,25 @@
 namespace RemoteTickets.Composition;
 
 /// <summary>Provides extension methods that compose RemoteTickets application services and HTTP middleware.</summary>
-public static class RemoteTicketsCompositionExtensions
+public static class WebApplicationBuilderExtensions
 {
     extension (WebApplicationBuilder builder)
     {
         /// <summary>Registers all application, persistence, identity, validation, authentication, authorization, and tenant services.</summary>
         /// <returns>The same application builder for fluent composition.</returns>
         /// <exception cref="InvalidOperationException">Thrown when required JWT configuration is missing or its secret key is too short.</exception>
-        public WebApplicationBuilder AddRemoteTickets()
+        public WebApplication BuildRemoteTickets()
         {
             var services = builder.Services;
             var configuration = builder.Configuration;
-            services.AddRazorComponents().AddInteractiveServerComponents();
+
+            services.AddRazorComponents()
+                .AddInteractiveServerComponents();
+            services.AddMudServices();
             services.AddControllers();
             services.AddHttpClient();
             services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
             services.AddSingleton<ISetupConfigurationStore, SetupConfigurationStore>();
-
             services.AddDbContext<RemoteTicketsDbContext>((sp, options) =>
             {
                 var setup = sp.GetRequiredService<ISetupConfigurationStore>();
@@ -96,35 +98,7 @@ public static class RemoteTicketsCompositionExtensions
                 .ConfigureCommandReceivePipe(pipe => pipe.UseValidation())
                 .ConfigureRequestPipe(pipe => pipe.UseValidation());
             services.RegisterMediator(mb);
-            return builder;
-        }
-    }
-
-    extension (WebApplication app)
-    {
-        /// <summary>Configures middleware, authentication, tenant isolation, authorization, controllers, static assets, and Blazor endpoints.</summary>
-        /// <typeparam name="TApp">The Blazor root component used by the application.</typeparam>
-        /// <returns>The same web application for fluent startup composition.</returns>
-        public WebApplication UseRemoteTickets<TApp>() where TApp : IComponent
-        {
-            if (!app.Environment.IsDevelopment())
-            {
-                app.UseExceptionHandler("/Error", createScopeForErrors: true);
-                app.UseHsts();
-            }
-            else app.UseDeveloperExceptionPage();
-
-            app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-            app.UseHttpsRedirection();
-            app.UseRouting();
-            app.UseAuthentication();
-            app.UseMiddleware<TenantAccessMiddleware>();
-            app.UseAuthorization();
-            app.UseAntiforgery();
-            app.MapControllers();
-            app.MapStaticAssets();
-            app.MapRazorComponents<TApp>().AddInteractiveServerRenderMode();
-            return app;
+            return builder.Build();
         }
     }
 }

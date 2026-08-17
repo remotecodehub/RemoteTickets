@@ -1,6 +1,9 @@
-@page "/{tenantId}"
+@page "/{TenantId}"
 
 <PageTitle>Home</PageTitle>
 
 <h1>RemoteTickets</h1>
-<p>Tenant: <strong>@tenantId</strong></p>
+<p>Tenant: <strong>@TenantId</strong></p>
+@code{
+    [Parameter] public string TenantId { get; set; } = string.Empty;
+}

@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.8.0" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.16.20" />
     <ProjectReference Include="..\RemoteTickets.Application\RemoteTickets.Application.csproj" />
     <ProjectReference Include="..\RemoteTickets.Infrastructure\RemoteTickets.Infrastructure.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
