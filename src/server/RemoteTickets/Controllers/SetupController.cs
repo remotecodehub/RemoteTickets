@@ -31,14 +31,30 @@ public sealed class SetupController(IMediator mediator, ISetupConfigurationStore
     public async Task<IActionResult> Initialize(InitializeSetupRequest request, CancellationToken cancellationToken)
     {
         var result = await mediator.RequestAsync<InitializeSetupCommand, IdentityResultResponse>(new InitializeSetupCommand(request.Email, request.Password), cancellationToken);
-        return result.Succeeded ? Ok(result) : Conflict(result);
+        if (!result.Succeeded) return Conflict(result);
+
+        var connectionString = configurationStore.GetMasterConnectionString();
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            var options = new DbContextOptionsBuilder<RemoteTicketsDbContext>().UseSqlServer(connectionString).Options;
+            await using var dbContext = new RemoteTicketsDbContext(options);
+            var state = await dbContext.SystemSetup.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+            if (state is null)
+            {
+                state = new SystemSetupState { Id = 1 };
+                dbContext.SystemSetup.Add(state);
+            }
+            state.IsComplete = true;
+            state.CompletedAt = DateTimeOffset.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        return Ok(result);
     }
 }
 
 /// <summary>Represents the master database setup payload.</summary>
 /// <param name="ConnectionString">The SQL Server connection string used by the tenant catalog.</param>
 public sealed record MasterDatabaseSetupRequest(string ConnectionString);
-
 /// <summary>Represents the first-time setup administrator credentials.</summary>
 /// <param name="Email">The administrator email address.</param>
 /// <param name="Password">The administrator password.</param>
