@@ -16,10 +16,17 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
         var endpoint = context.GetEndpoint();
         var anonymous = endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
         var setupState = await masterDb.SystemSetup.AsNoTracking().SingleOrDefaultAsync(x => x.Id == 1, context.RequestAborted);
-        if (setupState is null || !setupState.IsComplete)
+        var systemSetupRequired = setupState is null || !setupState.IsComplete;
+        if (systemSetupRequired)
         {
             if (IsSystemSetupEndpoint(context)) { await next(context); return; }
             await RejectOrRedirectAsync(context, "/setup", StatusCodes.Status503ServiceUnavailable);
+            return;
+        }
+        if (IsSystemSetupEndpoint(context) && HttpMethods.IsPost(context.Request.Method))
+        {
+            context.Response.StatusCode = StatusCodes.Status409Conflict;
+            await context.Response.WriteAsJsonAsync(new { error = "System setup is already complete." }, context.RequestAborted);
             return;
         }
         if (!context.Request.RouteValues.TryGetValue("tenantId", out var value) || string.IsNullOrWhiteSpace(value?.ToString()))
