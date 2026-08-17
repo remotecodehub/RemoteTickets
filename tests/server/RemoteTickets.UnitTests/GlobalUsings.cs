@@ -21,6 +21,7 @@ global using RemoteTickets.Infrastructure.Identity.Models;
 global using RemoteTickets.Infrastructure.Identity.Services;
 global using RemoteTickets.Infrastructure.Persistence;
 global using RemoteTickets.Infrastructure.Persistence.Auditing;
+global using RemoteTickets.Infrastructure.Tenancy;
 global using Mediator.Net.Context;
 global using Microsoft.AspNetCore.Http;
 global using Microsoft.AspNetCore.Identity;
