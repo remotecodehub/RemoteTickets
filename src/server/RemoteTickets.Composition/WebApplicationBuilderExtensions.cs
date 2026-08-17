@@ -58,7 +58,7 @@ public static class WebApplicationBuilderExtensions
             services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
             services.AddValidatorsFromAssemblyContaining<RegisterCommandValidator>();
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+            _ = services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
             {
                 var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? throw new InvalidOperationException("JWT configuration is missing.");
                 if (Encoding.UTF8.GetByteCount(jwt.SecretKey) < 32) throw new InvalidOperationException("Authentication:Jwt:SecretKey must contain at least 256 bits.");
@@ -78,13 +78,17 @@ public static class WebApplicationBuilderExtensions
                     OnTokenValidated = context =>
                     {
                         var token = context.SecurityToken as JwtSecurityToken;
-                        var tokenType = token?.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Typ)?.Value;
+                        string? tokenType = token?.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Typ)?.Value;
                         if (!string.Equals(tokenType, JwtTokenTypes.Access, StringComparison.Ordinal))
                         {
                             context.Fail("The supplied token is not an access token.");
                             return Task.CompletedTask;
                         }
-                        if (token is not null && context.HttpContext.RequestServices.GetRequiredService<IRevokedTokenStore>().IsRevoked(token.Id)) context.Fail("The supplied token has been revoked.");
+                        if (token is not null && context.HttpContext.RequestServices.GetRequiredService<IRevokedTokenStore>().IsRevoked(token.Id))
+                        {
+                            context.Fail("The supplied token has been revoked.");
+                        }
+
                         return Task.CompletedTask;
                     }
                 };

@@ -53,7 +53,7 @@ public sealed class JwtTokenServiceTests
         var store = new RevokedTokenStore();
         var service = CreateService(store);
         var tokens = service.CreateTokens("user-id", "user@example.com", [], []);
-        var tokenId = service.GetTokenId(tokens.AccessToken);
+        string? tokenId = service.GetTokenId(tokens.AccessToken);
         tokenId.Should().NotBeNull();
 
         store.Revoke(tokenId!, DateTimeOffset.UtcNow.AddMinutes(1));

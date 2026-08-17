@@ -76,7 +76,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IRevokedTokenS
 
     private SymmetricSecurityKey CreateSecurityKey()
     {
-        var bytes = Encoding.UTF8.GetBytes(_options.SecretKey);
+        byte[] bytes = Encoding.UTF8.GetBytes(_options.SecretKey);
         if (bytes.Length < 32) throw new InvalidOperationException("Authentication:Jwt:SecretKey must contain at least 256 bits.");
         return new SymmetricSecurityKey(bytes);
     }

@@ -102,7 +102,7 @@ public sealed class TenantManagementService(
         builder.InitialCatalog = "master";
         await using var connection = new SqlConnection(builder.ConnectionString);
         await connection.OpenAsync(cancellationToken);
-        var escaped = $"[{databaseName.Replace("]", "]]", StringComparison.Ordinal)}]";
+        string escaped = $"[{databaseName.Replace("]", "]]", StringComparison.Ordinal)}]";
         await using var command = connection.CreateCommand();
         command.CommandText = $"IF DB_ID(@databaseName) IS NULL CREATE DATABASE {escaped};";
         command.Parameters.AddWithValue("@databaseName", databaseName);

@@ -41,7 +41,7 @@ public sealed class SetupConfigurationStore : ISetupConfigurationStore
     {
         if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentException("A master database connection string is required.", nameof(connectionString));
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        var json = JsonSerializer.Serialize(new State(connectionString));
+        string json = JsonSerializer.Serialize(new State(connectionString));
         await File.WriteAllTextAsync(_path, json, cancellationToken);
     }
 

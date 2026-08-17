@@ -26,7 +26,7 @@ public sealed partial class IdentityService
 
         if (await userManager.GetTwoFactorEnabledAsync(user))
         {
-            var valid = !string.IsNullOrWhiteSpace(twoFactorCode)
+            bool valid = !string.IsNullOrWhiteSpace(twoFactorCode)
                 ? await userManager.VerifyTwoFactorTokenAsync(user, userManager.Options.Tokens.AuthenticatorTokenProvider, twoFactorCode)
                 : !string.IsNullOrWhiteSpace(twoFactorRecoveryCode) && (await userManager.RedeemTwoFactorRecoveryCodeAsync(user, twoFactorRecoveryCode)).Succeeded;
             if (!valid) return null;
@@ -34,7 +34,7 @@ public sealed partial class IdentityService
 
         var roles = await userManager.GetRolesAsync(user);
         var claims = await userManager.GetClaimsAsync(user);
-        foreach (var roleName in roles)
+        foreach (string roleName in roles)
         {
             var role = await roleManager.FindByNameAsync(roleName);
             if (role is not null) claims = claims.Concat(await roleManager.GetClaimsAsync(role)).ToList();

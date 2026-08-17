@@ -35,7 +35,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [Authorize]
     public async Task<IActionResult> Revoke(CancellationToken cancellationToken)
     {
-        var accessToken = Request.Headers.Authorization.ToString().Replace("Bearer ", string.Empty, StringComparison.OrdinalIgnoreCase);
+        string accessToken = Request.Headers.Authorization.ToString().Replace("Bearer ", string.Empty, StringComparison.OrdinalIgnoreCase);
         var result = await mediator.RequestAsync<RevokeTokenCommand, Response<bool>>(new RevokeTokenCommand(accessToken), cancellationToken);
         return result.Data == true ? Ok() : Unauthorized(result);
     }
@@ -76,7 +76,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetInfo(CancellationToken cancellationToken)
     {
-        var userId = GetUserId();
+        string? userId = GetUserId();
         if (userId is null) return Unauthorized();
         var result = await mediator.RequestAsync<GetIdentityInfoQuery, Response<IdentityInfoResponse>>(new GetIdentityInfoQuery(userId), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : NotFound(result);
@@ -86,7 +86,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [Authorize]
     public async Task<IActionResult> UpdateInfo(InfoRequest request, CancellationToken cancellationToken)
     {
-        var userId = GetUserId();
+        string? userId = GetUserId();
         if (userId is null) return Unauthorized();
         var result = await mediator.RequestAsync<UpdateIdentityInfoCommand, IdentityResultResponse>(new UpdateIdentityInfoCommand(userId, request.NewEmail, request.NewPassword, request.OldPassword), cancellationToken);
         return result.Succeeded ? Ok() : BadRequest(result);
@@ -96,7 +96,7 @@ public sealed class IdentityController(IMediator mediator) : ControllerBase
     [Authorize]
     public async Task<IActionResult> ConfigureTwoFactor(TwoFactorRequest request, CancellationToken cancellationToken)
     {
-        var userId = GetUserId();
+        string? userId = GetUserId();
         if (userId is null) return Unauthorized();
         var result = await mediator.RequestAsync<ConfigureTwoFactorCommand, Response<TwoFactorResponse>>(new ConfigureTwoFactorCommand(userId, request.Enable, request.TwoFactorCode, request.ResetRecoveryCodes, request.ResetSharedKey, request.ForgetMachine), cancellationToken);
         return result.Succeeded ? Ok(result.Data) : BadRequest(result);

@@ -33,7 +33,7 @@ public sealed class SetupController(IMediator mediator, ISetupConfigurationStore
         var result = await mediator.RequestAsync<InitializeSetupCommand, IdentityResultResponse>(new InitializeSetupCommand(request.Email, request.Password), cancellationToken);
         if (!result.Succeeded) return Conflict(result);
 
-        var connectionString = configurationStore.GetMasterConnectionString();
+        string? connectionString = configurationStore.GetMasterConnectionString();
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
             var options = new DbContextOptionsBuilder<RemoteTicketsDbContext>().UseSqlServer(connectionString).Options;

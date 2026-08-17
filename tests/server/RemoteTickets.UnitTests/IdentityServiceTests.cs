@@ -29,7 +29,7 @@ public sealed class IdentityServiceTests
         var refreshed = await service.RefreshAsync(tokens.RefreshToken, CancellationToken.None);
         refreshed.Should().NotBeNull();
         fixture.TokenService.ValidateToken(tokens.RefreshToken).Should().BeNull();
-        var revoked = await service.RevokeAsync(refreshed!.AccessToken, CancellationToken.None);
+        bool revoked = await service.RevokeAsync(refreshed!.AccessToken, CancellationToken.None);
         revoked.Should().BeTrue();
         fixture.TokenService.ValidateToken(refreshed.AccessToken).Should().BeNull();
     }
@@ -44,7 +44,7 @@ public sealed class IdentityServiceTests
         registration.Succeeded.Should().BeTrue();
         fixture.EmailSender.ConfirmationLinks.Should().ContainSingle();
         var confirmationQuery = ParseQuery(fixture.EmailSender.ConfirmationLinks.Single());
-        var confirmed = await fixture.Service.ConfirmEmailAsync(confirmationQuery["userId"], confirmationQuery["code"], null, CancellationToken.None);
+        bool confirmed = await fixture.Service.ConfirmEmailAsync(confirmationQuery["userId"], confirmationQuery["code"], null, CancellationToken.None);
         confirmed.Should().BeTrue();
         var info = await fixture.Service.GetInfoAsync(confirmationQuery["userId"], CancellationToken.None);
         info.Should().NotBeNull();
@@ -76,7 +76,7 @@ public sealed class IdentityServiceTests
 
     private static Dictionary<string, string> ParseQuery(string uri)
     {
-        var query = new Uri("https://localhost" + uri).Query.TrimStart('?');
+        string query = new Uri("https://localhost" + uri).Query.TrimStart('?');
         return query.Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Select(part => part.Split('=', 2))
             .ToDictionary(part => part[0], part => Uri.UnescapeDataString(part[1]));

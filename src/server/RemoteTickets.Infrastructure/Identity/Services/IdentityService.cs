@@ -28,7 +28,7 @@ public sealed partial class IdentityService(
         var user = new User(email) { Email = email, DisplayName = "", FirstName = "", SurName = "", EmailConfirmed = false };
         var result = await userManager.CreateAsync(user, password);
         if (!result.Succeeded) return Failure(result);
-        var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        string code = await userManager.GenerateEmailConfirmationTokenAsync(user);
         await emailSender.SendConfirmationAsync(email, $"/confirmEmail?userId={Uri.EscapeDataString(user.Id)}&code={Uri.EscapeDataString(code)}", cancellationToken);
         return IdentityResultResponse.Success();
     }
@@ -42,7 +42,7 @@ public sealed partial class IdentityService(
         if (passwordResult.IsLockedOut || passwordResult.IsNotAllowed || !passwordResult.Succeeded) return null;
         if (await userManager.GetTwoFactorEnabledAsync(user))
         {
-            var valid = !string.IsNullOrWhiteSpace(twoFactorCode)
+            bool valid = !string.IsNullOrWhiteSpace(twoFactorCode)
                 ? await userManager.VerifyTwoFactorTokenAsync(user, userManager.Options.Tokens.AuthenticatorTokenProvider, twoFactorCode)
                 : !string.IsNullOrWhiteSpace(twoFactorRecoveryCode) && (await userManager.RedeemTwoFactorRecoveryCodeAsync(user, twoFactorRecoveryCode)).Succeeded;
             if (!valid) return null;
@@ -55,11 +55,11 @@ public sealed partial class IdentityService(
     {
         var principal = tokenService.ValidateToken(refreshToken);
         if (principal is null || !string.Equals(principal.FindFirstValue("token_type"), JwtTokenTypes.Refresh, StringComparison.Ordinal)) return null;
-        var userId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        string? userId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId)) return null;
         var user = await userManager.FindByIdAsync(userId);
         if (user is null) return null;
-        var tokenId = tokenService.GetTokenId(refreshToken);
+        string? tokenId = tokenService.GetTokenId(refreshToken);
         var expiration = tokenService.GetExpiration(refreshToken);
         var tokens = await CreateUserTokensAsync(user, cancellationToken);
         if (!string.IsNullOrWhiteSpace(tokenId) && expiration.HasValue) revokedTokenStore.Revoke(tokenId, expiration.Value);
@@ -70,7 +70,7 @@ public sealed partial class IdentityService(
     public Task<bool> RevokeAsync(string accessToken, CancellationToken cancellationToken)
     {
         var principal = tokenService.ValidateToken(accessToken);
-        var tokenId = tokenService.GetTokenId(accessToken);
+        string? tokenId = tokenService.GetTokenId(accessToken);
         var expiration = tokenService.GetExpiration(accessToken);
         if (principal is null || string.IsNullOrWhiteSpace(tokenId) || !expiration.HasValue) return Task.FromResult(false);
         revokedTokenStore.Revoke(tokenId, expiration.Value);
@@ -91,7 +91,7 @@ public sealed partial class IdentityService(
     {
         var user = await userManager.FindByEmailAsync(email);
         if (user is null || await userManager.IsEmailConfirmedAsync(user)) return IdentityResultResponse.Success();
-        var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        string code = await userManager.GenerateEmailConfirmationTokenAsync(user);
         await emailSender.SendConfirmationAsync(email, $"/confirmEmail?userId={Uri.EscapeDataString(user.Id)}&code={Uri.EscapeDataString(code)}", cancellationToken);
         return IdentityResultResponse.Success();
     }
@@ -101,7 +101,7 @@ public sealed partial class IdentityService(
     {
         var user = await userManager.FindByEmailAsync(email);
         if (user is null || !await userManager.HasPasswordAsync(user)) return IdentityResultResponse.Success();
-        var code = await userManager.GeneratePasswordResetTokenAsync(user);
+        string code = await userManager.GeneratePasswordResetTokenAsync(user);
         await emailSender.SendPasswordResetAsync(email, $"/resetPassword?email={Uri.EscapeDataString(email)}&code={Uri.EscapeDataString(code)}", cancellationToken);
         return IdentityResultResponse.Success();
     }
@@ -154,7 +154,7 @@ public sealed partial class IdentityService(
         if (resetSharedKey) await userManager.ResetAuthenticatorKeyAsync(user);
         string[]? recoveryCodes = null;
         if (resetRecoveryCodes || (enable == true && await userManager.CountRecoveryCodesAsync(user) == 0)) recoveryCodes = (await userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10))?.ToArray();
-        var key = await userManager.GetAuthenticatorKeyAsync(user);
+        string? key = await userManager.GetAuthenticatorKeyAsync(user);
         if (string.IsNullOrWhiteSpace(key)) { await userManager.ResetAuthenticatorKeyAsync(user); key = await userManager.GetAuthenticatorKeyAsync(user); }
         return new TwoFactorResponse(key, await userManager.CountRecoveryCodesAsync(user), recoveryCodes, await userManager.GetTwoFactorEnabledAsync(user), false);
     }
@@ -162,7 +162,7 @@ public sealed partial class IdentityService(
     /// <summary>Gets whether initial system setup is required or has already been completed.</summary>
     public async Task<SetupStatusResponse> GetSetupStatusAsync(CancellationToken cancellationToken)
     {
-        var hasUsers = await userManager.Users.AsNoTracking().AnyAsync(cancellationToken);
+        bool hasUsers = await userManager.Users.AsNoTracking().AnyAsync(cancellationToken);
         return new SetupStatusResponse(!hasUsers, hasUsers);
     }
 
@@ -198,7 +198,7 @@ public sealed partial class IdentityService(
     {
         var roles = await userManager.GetRolesAsync(user);
         var claims = await userManager.GetClaimsAsync(user);
-        foreach (var roleName in roles)
+        foreach (string roleName in roles)
         {
             var role = await roleManager.FindByNameAsync(roleName);
             if (role is not null) claims = claims.Concat(await roleManager.GetClaimsAsync(role)).ToList();

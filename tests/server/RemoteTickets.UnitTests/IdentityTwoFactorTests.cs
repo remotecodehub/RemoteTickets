@@ -15,17 +15,17 @@ public sealed class IdentityTwoFactorTests
         user.Should().NotBeNull();
 
         await fixture.UserManager.ResetAuthenticatorKeyAsync(user!);
-        var key = await fixture.UserManager.GetAuthenticatorKeyAsync(user);
+        string? key = await fixture.UserManager.GetAuthenticatorKeyAsync(user);
         key.Should().NotBeNullOrWhiteSpace();
-        var code = CreateAuthenticatorCode(key!, DateTimeOffset.UtcNow);
+        string code = CreateAuthenticatorCode(key!, DateTimeOffset.UtcNow);
 
         var enabled = await fixture.Service.ConfigureTwoFactorAsync(user!.Id, true, code, true, false, false, CancellationToken.None);
         enabled.Should().NotBeNull();
         enabled!.IsTwoFactorEnabled.Should().BeTrue();
         enabled.RecoveryCodes.Should().NotBeNullOrEmpty();
 
-        var loginKey = await fixture.UserManager.GetAuthenticatorKeyAsync(user);
-        var loginCode = CreateAuthenticatorCode(loginKey!, DateTimeOffset.UtcNow);
+        string? loginKey = await fixture.UserManager.GetAuthenticatorKeyAsync(user);
+        string loginCode = CreateAuthenticatorCode(loginKey!, DateTimeOffset.UtcNow);
         var login = await fixture.Service.LoginAsync("admin@example.com", "Password1!", loginCode, null, CancellationToken.None);
         login.Should().NotBeNull();
 
@@ -68,30 +68,30 @@ public sealed class IdentityTwoFactorTests
 
     private static string CreateAuthenticatorCode(string secret, DateTimeOffset timestamp)
     {
-        var key = Base32Decode(secret);
-        var counter = BitConverter.GetBytes(timestamp.ToUnixTimeSeconds() / 30);
+        byte[] key = Base32Decode(secret);
+        byte[] counter = BitConverter.GetBytes(timestamp.ToUnixTimeSeconds() / 30);
         if (BitConverter.IsLittleEndian)
         {
             Array.Reverse(counter);
         }
 
         using var hmac = new HMACSHA1(key);
-        var hash = hmac.ComputeHash(counter);
-        var offset = hash[^1] & 0x0F;
-        var binary = ((hash[offset] & 0x7F) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
+        byte[] hash = hmac.ComputeHash(counter);
+        int offset = hash[^1] & 0x0F;
+        int binary = ((hash[offset] & 0x7F) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
         return (binary % 1_000_000).ToString("D6");
     }
 
     private static byte[] Base32Decode(string value)
     {
-        var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-        var buffer = 0;
-        var bitsLeft = 0;
+        string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        int buffer = 0;
+        int bitsLeft = 0;
         var result = new List<byte>();
 
-        foreach (var character in value.TrimEnd('=').ToUpperInvariant())
+        foreach (char character in value.TrimEnd('=').ToUpperInvariant())
         {
-            var index = alphabet.IndexOf(character);
+            int index = alphabet.IndexOf(character);
             if (index < 0)
             {
                 throw new FormatException("Invalid Base32 value.");

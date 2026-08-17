@@ -59,7 +59,7 @@ public sealed class IdentityBranchTests
         twoFactorSetup!.SharedKey.Should().NotBeNullOrWhiteSpace();
 
         // AuthenticatorTokenProvider intentionally does not generate codes; the client authenticator generates TOTP from SharedKey.
-        var setupCode = GenerateTotp(twoFactorSetup.SharedKey!);
+        string setupCode = GenerateTotp(twoFactorSetup.SharedKey!);
         setupCode.Should().NotBeNullOrWhiteSpace();
 
         var configured = await fixture.Service.ConfigureTwoFactorAsync(
@@ -92,10 +92,10 @@ public sealed class IdentityBranchTests
         access.Should().NotBeNull();
         (await fixture.Service.RefreshAsync(access!.AccessToken, CancellationToken.None)).Should().BeNull();
 
-        var emptySubject = fixture.TokenService.CreateTokens(string.Empty, "empty@example.com", [], []).RefreshToken;
+        string emptySubject = fixture.TokenService.CreateTokens(string.Empty, "empty@example.com", [], []).RefreshToken;
         (await fixture.Service.RefreshAsync(emptySubject, CancellationToken.None)).Should().BeNull();
 
-        var unknownUser = fixture.TokenService.CreateTokens("missing-user", "missing@example.com", [], []).RefreshToken;
+        string unknownUser = fixture.TokenService.CreateTokens("missing-user", "missing@example.com", [], []).RefreshToken;
         (await fixture.Service.RefreshAsync(unknownUser, CancellationToken.None)).Should().BeNull();
     }
 
@@ -108,7 +108,7 @@ public sealed class IdentityBranchTests
     {
         await using var fixture = await IdentityFixture.CreateAsync();
         await fixture.Service.RegisterAsync("old@example.com", "Password1!", CancellationToken.None);
-        var link = fixture.EmailSender.ConfirmationLinks.Single();
+        string link = fixture.EmailSender.ConfirmationLinks.Single();
         var query = new Uri("https://localhost" + link).Query.TrimStart('?')
             .Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Select(part => part.Split('=', 2))
@@ -116,7 +116,7 @@ public sealed class IdentityBranchTests
 
         var user = await fixture.UserManager.FindByIdAsync(query["userId"]);
         user.Should().NotBeNull();
-        var changeCode = await fixture.UserManager.GenerateChangeEmailTokenAsync(user!, "new@example.com");
+        string changeCode = await fixture.UserManager.GenerateChangeEmailTokenAsync(user!, "new@example.com");
         (await fixture.Service.ConfirmEmailAsync(user!.Id, changeCode, "new@example.com", CancellationToken.None)).Should().BeTrue();
         (await fixture.Service.ConfirmEmailAsync(user.Id, "invalid", null, CancellationToken.None)).Should().BeFalse();
     }
@@ -211,12 +211,12 @@ public sealed class IdentityBranchTests
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sharedKey);
 
-        var key = DecodeBase32(sharedKey);
-        var counter = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30));
+        byte[] key = DecodeBase32(sharedKey);
+        byte[] counter = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30));
         using var hmac = new HMACSHA1(key);
-        var hash = hmac.ComputeHash(counter);
-        var offset = hash[^1] & 0x0F;
-        var binary = ((hash[offset] & 0x7F) << 24)
+        byte[] hash = hmac.ComputeHash(counter);
+        int offset = hash[^1] & 0x0F;
+        int binary = ((hash[offset] & 0x7F) << 24)
             | ((hash[offset + 1] & 0xFF) << 16)
             | ((hash[offset + 2] & 0xFF) << 8)
             | (hash[offset + 3] & 0xFF);
@@ -234,13 +234,13 @@ public sealed class IdentityBranchTests
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-        var buffer = 0;
-        var bits = 0;
+        int buffer = 0;
+        int bits = 0;
         var bytes = new List<byte>();
 
-        foreach (var character in value.TrimEnd('=').ToUpperInvariant())
+        foreach (char character in value.TrimEnd('=').ToUpperInvariant())
         {
-            var index = alphabet.IndexOf(character);
+            int index = alphabet.IndexOf(character);
             if (index < 0)
             {
                 throw new ArgumentException("The authenticator shared key is not valid Base32.", nameof(value));
