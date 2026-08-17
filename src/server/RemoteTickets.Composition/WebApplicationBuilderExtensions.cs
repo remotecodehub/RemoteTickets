@@ -53,6 +53,7 @@ public static class WebApplicationBuilderExtensions
             services.AddScoped<ITenantManagementService, TenantManagementService>();
             services.AddScoped<TenantAccessMiddleware>();
             services.AddScoped<IMessageValidator, FluentMessageValidator>();
+            services.AddScoped<ISystemService, SystemService>();
             services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
@@ -110,6 +111,7 @@ public static class WebApplicationBuilderExtensions
                 .ConfigureCommandReceivePipe(pipe => pipe.UseValidation())
                 .ConfigureRequestPipe(pipe => pipe.UseValidation());
             services.RegisterMediator(mb);
+
             await builder.Build().RunRemoteTickets<T>();
         }
     }

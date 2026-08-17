@@ -1,6 +1,6 @@
 namespace RemoteTickets.Infrastructure.Tenancy.Configurations;
 
-internal sealed class TenancyConfigurations : IEntityTypeConfiguration<TenantSetupState>
+internal sealed class TenantSetupStateConfiguration : IEntityTypeConfiguration<TenantSetupState>
 {
     public void Configure(EntityTypeBuilder<TenantSetupState> builder)
     {

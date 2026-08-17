@@ -27,7 +27,7 @@ public sealed class TenantManagementService(
 
         var tenant = new Tenant
         {
-            Id = request.Id,
+            Id = Guid.CreateVersion7().ToString(),
             Name = request.Name,
             DatabaseName = request.DatabaseName,
             ConnectionString = request.ConnectionString,
@@ -56,7 +56,7 @@ public sealed class TenantManagementService(
         Tenant tenant = await GetTenantEntityAsync(tenantId, cancellationToken);
         await using TenantSetupDbContext context = CreateSetupContext(tenant.ConnectionString);
         await context.Database.EnsureCreatedAsync(cancellationToken);
-        TenantSetupState? state = await context.SetupStates.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+        TenantSetupState? state = await context.SetupStates.SingleOrDefaultAsync(x => x.Id == RemoteTicketsConstants.TenantSetupId, cancellationToken);
         return new TenantSetupStatusResponse(state is null || !state.IsComplete, state?.IsComplete == true);
     }
 
@@ -66,10 +66,10 @@ public sealed class TenantManagementService(
         Tenant tenant = await GetTenantEntityAsync(tenantId, cancellationToken);
         await using TenantSetupDbContext context = CreateSetupContext(tenant.ConnectionString);
         await context.Database.EnsureCreatedAsync(cancellationToken);
-        TenantSetupState? state = await context.SetupStates.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+        TenantSetupState? state = await context.SetupStates.SingleOrDefaultAsync(x => x.Id == RemoteTicketsConstants.TenantSetupId, cancellationToken);
         if (state is null)
         {
-            state = new TenantSetupState { Id = 1 };
+            state = new TenantSetupState { Id = RemoteTicketsConstants.TenantSetupId };
             context.SetupStates.Add(state);
         }
 

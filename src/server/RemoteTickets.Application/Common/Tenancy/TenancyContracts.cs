@@ -36,7 +36,7 @@ public static class TenantPolicies
 /// <summary>Represents the setup state of a tenant database.</summary>
 /// <param name="IsSetupRequired">Indicates whether tenant setup is still required.</param>
 /// <param name="IsSetupComplete">Indicates whether tenant setup has completed.</param>
-public sealed record TenantSetupStatusResponse(bool IsSetupRequired, bool IsSetupComplete);
+public sealed record TenantSetupStatusResponse(bool IsSetupRequired, bool IsSetupComplete) : IResponse;
 
 /// <summary>Represents a tenant exposed to system administrators.</summary>
 /// <param name="Id">The stable tenant identifier used in routes.</param>
@@ -44,7 +44,7 @@ public sealed record TenantSetupStatusResponse(bool IsSetupRequired, bool IsSetu
 /// <param name="DatabaseName">The database name assigned to the tenant.</param>
 /// <param name="IsActive">Indicates whether the tenant accepts normal operations.</param>
 /// <param name="IsSetupComplete">Indicates whether tenant setup has completed.</param>
-public sealed record TenantResponse(string Id, string Name, string DatabaseName, bool IsActive, bool IsSetupComplete);
+public sealed record TenantResponse(string Id, string Name, string DatabaseName, bool IsActive, bool IsSetupComplete) : IResponse;
 
 /// <summary>Represents a request to provision a tenant and its first administrator.</summary>
 /// <param name="Id">The tenant identifier.</param>
@@ -53,7 +53,15 @@ public sealed record TenantResponse(string Id, string Name, string DatabaseName,
 /// <param name="ConnectionString">The connection string for the tenant database.</param>
 /// <param name="AdminEmail">The first tenant administrator email.</param>
 /// <param name="AdminPassword">The first tenant administrator password.</param>
-public sealed record CreateTenantRequest(string Id, string Name, string DatabaseName, string ConnectionString, string AdminEmail, string AdminPassword);
+public sealed record CreateTenantRequest(string Id, string Name, string DatabaseName, string ConnectionString, string AdminEmail, string AdminPassword)
+{
+    public CreateTenantCommand ToCommand() 
+        => new ((string.IsNullOrEmpty(Name) || string.IsNullOrWhiteSpace(Name) ? throw new ArgumentNullException(nameof(Name)) : Name),
+            (string.IsNullOrEmpty(DatabaseName) || string.IsNullOrWhiteSpace(DatabaseName)? throw new ArgumentNullException(nameof(DatabaseName)) : DatabaseName),
+            (string.IsNullOrEmpty(ConnectionString) || string.IsNullOrWhiteSpace(ConnectionString)? throw new ArgumentNullException(nameof(ConnectionString)) : ConnectionString),
+            (string.IsNullOrEmpty(AdminEmail) || string.IsNullOrWhiteSpace(AdminEmail)? throw new ArgumentNullException(nameof(AdminEmail)) : AdminEmail),
+            (string.IsNullOrEmpty(AdminPassword) || string.IsNullOrWhiteSpace(AdminPassword)? throw new ArgumentNullException(nameof(AdminPassword)) : AdminPassword));
+}
 
 /// <summary>Provides tenant registration and setup operations.</summary>
 public interface ITenantManagementService
@@ -82,3 +90,4 @@ public interface ITenantManagementService
     /// <returns>The resulting setup state.</returns>
     Task<TenantSetupStatusResponse> CompleteSetupAsync(string tenantId, CancellationToken cancellationToken);
 }
+

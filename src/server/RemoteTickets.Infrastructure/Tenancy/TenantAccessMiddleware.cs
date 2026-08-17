@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Mvc;
+
 namespace RemoteTickets.Infrastructure.Tenancy;
 
 /// <summary>Enforces tenant route isolation and mandatory setup state for HTTP requests.</summary>
@@ -11,7 +13,7 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
         if (IsInfrastructurePath(context.Request.Path)) { await next(context); return; }
         Endpoint? endpoint = context.GetEndpoint();
         bool anonymous = endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
-        SystemSetupState? setupState = await masterDb.SystemSetup.AsNoTracking().SingleOrDefaultAsync(x => x.Id == 1, context.RequestAborted);
+        SystemSetupState? setupState = await masterDb.SystemSetup.AsNoTracking().SingleOrDefaultAsync(x => x.Id == RemoteTicketsConstants.SystemSetupId, context.RequestAborted);
         bool systemSetupRequired = setupState is null || !setupState.IsComplete;
         if (systemSetupRequired)
         {
@@ -46,7 +48,10 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
             return;
         }
         TenantResponse? tenant = await tenants.GetAsync(tenantId, context.RequestAborted);
-        if (tenant is null || !tenant.IsActive) { await RejectOrRedirectAsync(context, "/not-found", StatusCodes.Status404NotFound); return; }
+        if (tenant is null || !tenant.IsActive)
+        {
+            await RejectOrRedirectAsync(context, "/not-found", StatusCodes.Status404NotFound); return;
+        }
         if (anonymous)
         {
             if (!tenant.IsSetupComplete && !IsTenantSetupEndpoint(context) && !IsTenantLoginEndpoint(context)) { await RejectOrRedirectAsync(context, $"/{tenantId}/setup", StatusCodes.Status409Conflict); return; }
@@ -63,25 +68,60 @@ public sealed class TenantAccessMiddleware(RequestDelegate next, ITenantManageme
         await next(context);
     }
 
-    private static bool IsInfrastructurePath(PathString path) => path.StartsWithSegments("/_blazor") || path.StartsWithSegments("/_framework") || path.StartsWithSegments("/_content") || path.StartsWithSegments("/favicon") || path.StartsWithSegments("/css") || path.StartsWithSegments("/lib");
-    private static bool IsSystemSetupEndpoint(HttpContext context) => context.Request.Path.StartsWithSegments("/api/setup") || string.Equals(context.Request.Path.Value, "/setup", StringComparison.OrdinalIgnoreCase);
-    private static bool IsTenantLoginEndpoint(HttpContext context) => string.Equals(context.Request.Path.Value, $"/api/v1/{context.Request.RouteValues["tenantId"]}/login", StringComparison.OrdinalIgnoreCase);
+    private static bool IsInfrastructurePath(PathString path) 
+        => path.StartsWithSegments("/_blazor") || 
+        path.StartsWithSegments("/_framework") || 
+        path.StartsWithSegments("/_content") || 
+        path.StartsWithSegments("/favicon") || 
+        path.StartsWithSegments("/css") || 
+        path.StartsWithSegments("/js") || 
+        path.StartsWithSegments("/lib");
+
+    private static bool IsSystemSetupEndpoint(HttpContext context)
+        => context.Request.Path.StartsWithSegments("/api/v1/setup") || 
+        string.Equals(context.Request.Path.Value, "/setup",
+        StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsTenantLoginEndpoint(HttpContext context) 
+        => string.Equals(context.Request.Path.Value, $"/api/v1/{
+            context.Request.RouteValues["tenantId"]}/login",
+             StringComparison.OrdinalIgnoreCase);
+
     private static bool IsTenantSetupEndpoint(HttpContext context)
     {
-        string? tenantId = context.Request.RouteValues.TryGetValue("tenantId", out object? value) ? value?.ToString() : null;
-        if (string.IsNullOrWhiteSpace(tenantId))
-        {
-            return false;
-        }
-
+        string? tenantId = context
+            .Request
+            .RouteValues
+            .TryGetValue("tenantId", out object? value) ?
+            value?.ToString() 
+            : null;
+        if (string.IsNullOrWhiteSpace(tenantId ) || 
+            string.IsNullOrEmpty(tenantId) || 
+            Guid.TryParse(tenantId, out Guid _)) { return false; }
         string? path = context.Request.Path.Value;
-        return string.Equals(path, $"/{tenantId}/setup", StringComparison.OrdinalIgnoreCase) || string.Equals(path, $"/api/v1/{tenantId}/setup", StringComparison.OrdinalIgnoreCase) || string.Equals(path, $"/api/v1/{tenantId}/setup/complete", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(path,
+            $"/{tenantId}/setup", 
+            StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(path, 
+            $"/api/v1/{tenantId}/setup", 
+            StringComparison.OrdinalIgnoreCase) || string.Equals(path, 
+            $"/api/v1/{tenantId}/setup/complete",
+            StringComparison.OrdinalIgnoreCase);
     }
     private static async Task RejectOrRedirectAsync(HttpContext context, string location, int statusCode)
     {
-        if (HttpMethods.IsGet(context.Request.Method) && context.Request.Headers.Accept.Any(x => x.Contains("text/html", StringComparison.OrdinalIgnoreCase))) { context.Response.Redirect(location); return; }
+        if (HttpMethods.IsGet(context.Request.Method) &&
+             context.Request.Headers.Accept.Any(
+                x => x != null && x.Contains("text/html", StringComparison.OrdinalIgnoreCase)))
+        { context.Response.Redirect(location); return; }
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/problem+json";
-        await context.Response.WriteAsJsonAsync(new { title = "Setup required", detail = "Complete the required setup before using this endpoint.", setup = location }, context.RequestAborted);
+        await context.Response.WriteAsJsonAsync(
+            new ProblemDetails
+            { 
+                Title = "Setup required",
+                Detail = $"Complete the required setup at {location} before using this endpoint." 
+            },
+            context.RequestAborted);
     }
 }

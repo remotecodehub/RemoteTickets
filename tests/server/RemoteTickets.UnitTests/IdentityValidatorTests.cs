@@ -1,5 +1,3 @@
-using FluentValidation.Results;
-
 namespace RemoteTickets.UnitTests;
 
 /// <summary>Verifies the validation rules for identity requests.</summary>

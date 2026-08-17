@@ -17,6 +17,7 @@ public sealed partial class IdentityService(
     IJwtTokenService tokenService,
     IRevokedTokenStore revokedTokenStore,
     IIdentityEmailSender emailSender,
+    ISetupConfigurationStore configurationStore,
     ILogger<IdentityService> logger) : IIdentityService
 {
     private const string AdministratorRole = "Administrator";
@@ -204,11 +205,9 @@ public sealed partial class IdentityService(
     /// <summary>Configures authenticator-based two-factor authentication and optionally rotates its recovery material.</summary>
     public async Task<TwoFactorResponse?> ConfigureTwoFactorAsync(string userId, bool? enable, string? twoFactorCode, bool resetRecoveryCodes, bool resetSharedKey, bool forgetMachine, CancellationToken cancellationToken)
     {
-        User? user = await userManager.FindByIdAsync(userId);
-        if (user is null)
-        {
-            return null;
-        }
+        User user = await userManager.FindByIdAsync(userId) ??  null!;
+
+        if (user == null) { return null; }
 
         if (enable == true)
         {
@@ -216,7 +215,6 @@ public sealed partial class IdentityService(
             {
                 return null;
             }
-
             await userManager.SetTwoFactorEnabledAsync(user, true);
         }
         else if (enable == false || resetSharedKey)
@@ -294,6 +292,21 @@ public sealed partial class IdentityService(
             return Failure(membershipResult);
         }
 
+        string? connectionString = configurationStore.GetMasterConnectionString();
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            DbContextOptions<RemoteTicketsDbContext> options = new DbContextOptionsBuilder<RemoteTicketsDbContext>().UseSqlServer(connectionString).Options;
+            await using var dbContext = new RemoteTicketsDbContext(options);
+            SystemSetupState? state = await dbContext.SystemSetup.SingleOrDefaultAsync(x => x.Id == RemoteTicketsConstants.SystemSetupId, cancellationToken);
+            if (state is null)
+            {
+                state = new SystemSetupState { Id = RemoteTicketsConstants.SystemSetupId };
+                dbContext.SystemSetup.Add(state);
+            }
+            state.IsComplete = true;
+            state.CompletedAt = DateTimeOffset.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
         logger.LogInformation("Initial system setup completed for user {UserId}.", user.Id);
         return IdentityResultResponse.Success();
     }

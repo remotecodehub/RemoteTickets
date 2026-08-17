@@ -6,6 +6,7 @@ global using System.Threading.Tasks;
 global using FluentValidation;
 global using RemoteTickets.Application.Common.Identity;
 global using RemoteTickets.Application.Common.Tenancy;
+global using RemoteTickets.Application.Common.System;
 global using RemoteTickets.Application.Identity;
 global using RemoteTickets.Application.Identity.Handlers;
 global using RemoteTickets.Application.Identity.Validators;

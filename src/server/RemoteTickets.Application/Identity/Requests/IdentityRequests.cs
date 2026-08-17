@@ -54,9 +54,3 @@ public sealed record UpdateIdentityInfoCommand(string UserId, string? NewEmail, 
 /// <param name="ResetSharedKey">Whether the shared key should be regenerated.</param>
 /// <param name="ForgetMachine">Whether remembered-machine state should be cleared.</param>
 public sealed record ConfigureTwoFactorCommand(string UserId, bool? Enable, string? TwoFactorCode, bool ResetRecoveryCodes, bool ResetSharedKey, bool ForgetMachine) : IRequest;
-/// <summary>Requests the current first-time setup status.</summary>
-public sealed record GetSetupStatusQuery : IRequest;
-/// <summary>Requests creation of the initial administrator account.</summary>
-/// <param name="Email">The administrator email address.</param>
-/// <param name="Password">The administrator password.</param>
-public sealed record InitializeSetupCommand(string Email, string Password) : IRequest;

@@ -4,7 +4,7 @@ namespace RemoteTickets.Infrastructure.Setup;
 public sealed class SystemSetupState
 {
     /// <summary>Gets or sets the singleton setup-state identifier.</summary>
-    public int Id { get; set; } = 1;
+    public string Id { get; set; } = RemoteTicketsConstants.SystemSetupId;
     /// <summary>Gets or sets whether the installation is ready for normal use.</summary>
     public bool IsComplete { get; set; }
     /// <summary>Gets or sets the completion timestamp.</summary>

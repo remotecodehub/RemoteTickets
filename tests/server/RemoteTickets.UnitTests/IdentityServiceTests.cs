@@ -1,3 +1,5 @@
+using RemoteTickets.Infrastructure.Setup;
+
 namespace RemoteTickets.UnitTests;
 
 /// <summary>Verifies end-to-end identity service workflows using the test Identity infrastructure.</summary>
@@ -92,7 +94,7 @@ internal sealed class IdentityFixture : IAsyncDisposable
         _provider = provider;
         EmailSender = emailSender;
     }
-
+    public ISetupConfigurationStore ConfigurationStore => _provider.GetRequiredService<ISetupConfigurationStore>(); 
     public IdentityService Service => _provider.GetRequiredService<IdentityService>();
     public IJwtTokenService TokenService => _provider.GetRequiredService<IJwtTokenService>();
     public UserManager<User> UserManager => _provider.GetRequiredService<UserManager<User>>();
@@ -133,6 +135,7 @@ internal sealed class IdentityFixture : IAsyncDisposable
         services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IIdentityEmailSender>(emailSender);
+        services.AddScoped<ISetupConfigurationStore, SetupConfigurationStore>();
         services.AddScoped<IdentityService>();
         ServiceProvider provider = services.BuildServiceProvider();
         await provider.GetRequiredService<RemoteTicketsDbContext>().Database.EnsureCreatedAsync();

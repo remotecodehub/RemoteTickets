@@ -9,6 +9,6 @@ public sealed class TenantSetupDbContext(DbContextOptions<TenantSetupDbContext> 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(TenancyConfigurations).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(TenantSetupStateConfiguration).Assembly);
     }
 }

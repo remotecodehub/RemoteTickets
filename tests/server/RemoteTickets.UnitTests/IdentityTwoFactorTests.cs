@@ -43,7 +43,9 @@ public sealed class IdentityTwoFactorTests
 
         (await fixture.Service.ConfigureTwoFactorAsync("missing", true, "123456", false, false, false, CancellationToken.None)).Should().BeNull();
 
-        await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
+        IdentityResultResponse setup = await fixture.Service.InitializeSetupAsync("admin@example.com", "Password1!", CancellationToken.None);
+        setup.Should().NotBeNull();
+        setup.Succeeded.Should().BeTrue();
         User? user = await fixture.UserManager.FindByEmailAsync("admin@example.com");
         user.Should().NotBeNull();
 
