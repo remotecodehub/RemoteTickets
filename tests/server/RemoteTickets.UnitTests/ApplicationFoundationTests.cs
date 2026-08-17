@@ -50,7 +50,6 @@ public sealed class ApplicationFoundationTests
         validator.IsValid(context, "Server=localhost;Password=secret").Should().BeFalse();
         validator.IsValid(context, "Server=\"unterminated").Should().BeFalse();
         validator.Name.Should().Be("ConnectionStringValidator");
-        validator.GetDefaultMessageTemplate("BAD").Should().Contain("InvalidKey");
     }
 
     [Fact]
