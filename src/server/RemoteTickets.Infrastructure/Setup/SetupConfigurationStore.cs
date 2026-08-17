@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace RemoteTickets.Infrastructure.Setup;
 
 /// <summary>Persists the installation master-database connection string used by the tenant catalog.</summary>
