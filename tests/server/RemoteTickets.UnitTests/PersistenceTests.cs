@@ -3,7 +3,6 @@ namespace RemoteTickets.UnitTests;
 /// <summary>Verifies Entity Framework Core persistence behavior for soft-deletable and auditable identity entities.</summary>
 public sealed class PersistenceTests
 {
-    /// <summary>Verifies that soft-deleted users are hidden by the configured query filter and audited as deletions.</summary>
     [Fact]
     public async Task Soft_deleted_users_should_be_hidden_by_query_filter()
     {
@@ -13,7 +12,6 @@ public sealed class PersistenceTests
         fixture.Context.SaveChanges();
         fixture.Context.Users.Remove(user);
         fixture.Context.SaveChanges();
-
         user.IsDeleted.Should().BeTrue();
         user.DeletedAt.Should().NotBeNull();
         (await fixture.Context.Users.SingleOrDefaultAsync(x => x.Id == user.Id)).Should().BeNull();
@@ -21,7 +19,6 @@ public sealed class PersistenceTests
         (await fixture.Context.EntityAuditHistory.Where(x => x.EntityId == user.Id).OrderBy(x => x.UpdatedAt).LastAsync(TestContext.Current.CancellationToken)).Operation.Should().Be("Deleted");
     }
 
-    /// <summary>Verifies that asynchronous save operations apply the same soft-delete behavior.</summary>
     [Fact]
     public async Task Async_soft_delete_should_apply_the_same_behavior()
     {
@@ -31,12 +28,10 @@ public sealed class PersistenceTests
         await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
         fixture.Context.Users.Remove(user);
         await fixture.Context.SaveChangesAsync(false, TestContext.Current.CancellationToken);
-
         user.IsDeleted.Should().BeTrue();
         user.DeletedAt.Should().NotBeNull();
     }
 
-    /// <summary>Verifies that an added and subsequently modified user produce audit history containing both states.</summary>
     [Fact]
     public async Task Auditable_entities_should_record_creation_and_update_states()
     {
@@ -46,7 +41,6 @@ public sealed class PersistenceTests
         await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
         user.DisplayName = "Updated";
         await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
-
         List<EntityAuditRecord> history = await fixture.Context.EntityAuditHistory.Where(x => x.EntityId == user.Id).OrderBy(x => x.UpdatedAt).ToListAsync(TestContext.Current.CancellationToken);
         history.Should().HaveCount(2);
         history[0].Operation.Should().Be("Created");
@@ -59,7 +53,21 @@ public sealed class PersistenceTests
         user.CreatedBy.Should().Be("system");
     }
 
-    /// <summary>Verifies that audit records capture the authenticated actor and that the history table belongs to the audit schema.</summary>
+    [Fact]
+    public async Task Non_soft_deletable_auditable_state_should_record_hard_delete()
+    {
+        await using ContextFixture fixture = await CreateContextAsync();
+        var state = new SystemSetupState { Id = Guid.CreateVersion7().ToString(), IsComplete = false };
+        fixture.Context.SystemSetup.Add(state);
+        await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        fixture.Context.SystemSetup.Remove(state);
+        await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        EntityAuditRecord history = await fixture.Context.EntityAuditHistory.Where(x => x.EntityId == state.Id).OrderBy(x => x.UpdatedAt).LastAsync(TestContext.Current.CancellationToken);
+        history.Operation.Should().Be("Deleted");
+        history.CurrentEntityState.Should().Contain(state.Id);
+    }
+
     [Fact]
     public async Task Audit_history_should_record_authenticated_actor_and_schema()
     {
@@ -68,7 +76,6 @@ public sealed class PersistenceTests
         var user = new User("actor@example.com") { Email = "actor@example.com", EmailConfirmed = true };
         fixture.Context.Users.Add(user);
         await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
-
         EntityAuditRecord history = await fixture.Context.EntityAuditHistory.SingleAsync(x => x.EntityId == user.Id, TestContext.Current.CancellationToken);
         history.UpdatedBy.Should().Be("actor-1");
         var auditEntity = fixture.Context.Model.FindEntityType(typeof(EntityAuditRecord));
@@ -77,7 +84,6 @@ public sealed class PersistenceTests
         auditEntity.GetTableName().Should().Be("EntityHistory");
     }
 
-    /// <summary>Verifies that the audit actor resolver falls back from subject to email and then to the system actor.</summary>
     [Fact]
     public async Task Audit_actor_should_fallback_to_subject_email_and_system()
     {
@@ -89,7 +95,6 @@ public sealed class PersistenceTests
             await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
             (await fixture.Context.EntityAuditHistory.SingleAsync(x => x.EntityId == user.Id, TestContext.Current.CancellationToken)).UpdatedBy.Should().Be("subject-1");
         }
-
         var emailAccessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Email, "actor@example.com")], "test")) } };
         await using (ContextFixture fixture = await CreateContextAsync(emailAccessor))
         {
@@ -98,7 +103,6 @@ public sealed class PersistenceTests
             await fixture.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
             (await fixture.Context.EntityAuditHistory.SingleAsync(x => x.EntityId == user.Id, TestContext.Current.CancellationToken)).UpdatedBy.Should().Be("actor@example.com");
         }
-
         await using (ContextFixture fixture = await CreateContextAsync())
         {
             var user = new User("system@example.com") { Email = "system@example.com" };
@@ -108,7 +112,6 @@ public sealed class PersistenceTests
         }
     }
 
-    /// <summary>Verifies that user and role constructors assign non-empty identity identifiers.</summary>
     [Fact]
     public void User_and_role_constructors_should_initialize_identity_ids()
     {
