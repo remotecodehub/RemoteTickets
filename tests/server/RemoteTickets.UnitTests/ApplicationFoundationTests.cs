@@ -66,7 +66,7 @@ public sealed class ApplicationFoundationTests
         var cancellationToken = TestContext.Current.CancellationToken;
         (await handlers.Handle(new ReceiveContext<GetTenantSetupStatusQuery>(new("tenant")), cancellationToken)).IsSetupComplete.Should().BeTrue();
         (await handlers.Handle(new ReceiveContext<CompleteTenantSetupCommand>(new("tenant")), cancellationToken)).IsSetupComplete.Should().BeTrue();
-        (await handlers.Handle(new ReceiveContext<CreateTenantCommand>(new("tenant", "db", "Server=.;Database=db", "admin@example.com", "Password1!")), cancellationToken)).Name.Should().Be("Tenant");
+        (await handlers.Handle(new ReceiveContext<CreateTenantCommand>(new("tenant", "db", "Server=.;Database=db", "admin@example.com", "Password1!")), cancellationToken)).Name.Should().Be("tenant");
         (await handlers.Handle(new ReceiveContext<GetTenantQuery>(new("tenant")), cancellationToken)).Should().NotBeNull();
     }
 
