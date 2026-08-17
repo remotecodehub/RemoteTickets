@@ -20,8 +20,7 @@ public sealed partial class IdentityService
                 : !string.IsNullOrWhiteSpace(twoFactorRecoveryCode) && (await userManager.RedeemTwoFactorRecoveryCodeAsync(user, twoFactorRecoveryCode)).Succeeded;
             if (!valid) return null;
         }
-        var claims = await GetTokenClaimsAsync(roles);
-        if (user.TenantId is not null) claims = claims.Append(new Claim(TenantClaimTypes.TenantId, user.TenantId)).ToList();
+        var claims = await GetTokenClaimsAsync(user, roles);
         return tokenService.CreateTokens(user.Id, user.Email ?? user.UserName ?? user.Id, roles, claims);
     }
 
@@ -53,14 +52,15 @@ public sealed partial class IdentityService
         return await RefreshAsync(refreshToken, cancellationToken);
     }
 
-    private async Task<List<Claim>> GetTokenClaimsAsync(IReadOnlyCollection<string> roles)
+    private async Task<List<Claim>> GetTokenClaimsAsync(User user, IReadOnlyCollection<string> roles)
     {
-        var claims = (await userManager.GetClaimsAsync(await userManager.FindByNameAsync(roles.FirstOrDefault() ?? string.Empty) ?? new User())).ToList();
+        var claims = (await userManager.GetClaimsAsync(user)).ToList();
         foreach (var roleName in roles)
         {
             var role = await roleManager.FindByNameAsync(roleName);
             if (role is not null) claims.AddRange(await roleManager.GetClaimsAsync(role));
         }
+        if (user.TenantId is not null) claims.Add(new Claim(TenantClaimTypes.TenantId, user.TenantId));
         return claims;
     }
 }
