@@ -1,7 +1,7 @@
 namespace RemoteTickets.Infrastructure.Identity.Models;
 
 /// <summary>Represents a user in the RemoteTickets application.</summary>
-public class User : IdentityUser<string>, ISoftDeletable
+public class User : IdentityUser<string>, ISoftDeletable, IEntityAuditable
 {
     /// <summary>User name displayed in the application.</summary>
     public string? DisplayName { get; set; } = string.Empty;
@@ -11,6 +11,10 @@ public class User : IdentityUser<string>, ISoftDeletable
     public string? SurName { get; set; } = string.Empty;
     /// <summary>Gets or sets the tenant to which the user belongs. A null value identifies a system administrator.</summary>
     public string? TenantId { get; set; }
+    /// <inheritdoc />
+    public DateTimeOffset CreatedAt { get; init; }
+    /// <inheritdoc />
+    public string CreatedBy { get; init; } = string.Empty;
     /// <summary>Indicates whether the user is deleted.</summary>
     public bool IsDeleted { get; set; }
     /// <summary>Gets or sets the date and time when the user was deleted.</summary>
